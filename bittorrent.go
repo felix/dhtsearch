@@ -105,7 +105,7 @@ func (bt *btClient) run(done <-chan struct{}) error {
 					}
 					bt.fetchMetadata(p)
 				}(p)
-			default:
+
 				if len(cache) > 2000 {
 					fmt.Printf("Flushing cache\n")
 					cache = make(map[string]bool)
