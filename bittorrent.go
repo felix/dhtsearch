@@ -76,19 +76,12 @@ func newBTClient(r <-chan peer, t chan<- Torrent) *btClient {
 
 func (bt *btClient) run(done <-chan struct{}) error {
 	var p peer
-	// Simple cache of most recent
-	cache := make(map[string]bool)
 	go func() {
 		for {
 			select {
 			case <-done:
 				return
 			case p = <-bt.peersIn:
-				if ok := cache[p.id]; ok {
-					//fmt.Printf("Torrent in cache, skipping\n")
-					continue
-				}
-				cache[p.id] = true
 				bt.workerTokens <- struct{}{}
 
 				go func(p peer) {
@@ -105,11 +98,6 @@ func (bt *btClient) run(done <-chan struct{}) error {
 					}
 					bt.fetchMetadata(p)
 				}(p)
-
-				if len(cache) > 2000 {
-					fmt.Printf("Flushing cache\n")
-					cache = make(map[string]bool)
-				}
 			}
 		}
 	}()

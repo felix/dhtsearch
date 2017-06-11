@@ -2,20 +2,14 @@
 
 
 [[projects]]
-  name = "github.com/mattn/go-sqlite3"
-  packages = ["."]
-  revision = "ca5e3819723d8eeaf170ad510e7da1d6d2e94a08"
-  version = "v1.2.0"
-
-[[projects]]
   branch = "master"
-  name = "golang.org/x/net"
-  packages = ["context"]
-  revision = "59a0b19b5533c7977ddeb86b017bf507ed407b12"
+  name = "github.com/jackc/pgx"
+  packages = ["."]
+  revision = "cd16be9308d0886a1fe2b5e1bb5e0bc935cd9217"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c64d8299c6eae3e3117076061359879695140237b41d3f7b8d78f256ab3607e3"
+  inputs-digest = "ea0a890188b8a69e2973eaaf879505333e2893781b691e2c6d1b50b75474e819"
   solver-name = "gps-cdcl"
   solver-version = 1

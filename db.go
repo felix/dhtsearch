@@ -1,103 +1,106 @@
 package main
 
 import (
-	"database/sql"
+	//"database/sql"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
-)
-
-const (
-	sqlInit = `
-	create table if not exists torrents (
-		id integer not null primary key,
-		ih text unique,
-		size int,
-		name text,
-		seen text
-	);
-	create table if not exists files (
-		id integer not null primary key,
-		torrent_id integer,
-		path text,
-		size int,
-		foreign key(torrent_id) references torrents(id)
-	);
-	`
+	//_ "github.com/lib/pq"
+	"github.com/jackc/pgx"
 )
 
 type db struct {
-	*sql.DB
+	*pgx.ConnPool
+	debug bool
 }
 
-func newDB() (*db, error) {
-	d, err := sql.Open("sqlite3", "./torrents.db")
+func newDB(dsn string) (*db, error) {
+	pgxConfig, err := pgx.ParseConnectionString(dsn)
+	if err != nil {
+		fmt.Printf("Error creating DB config %q\n", err)
+		return nil, err
+	}
+	d, err := pgx.NewConnPool(pgx.ConnPoolConfig{pgxConfig, 3, nil, 0})
 	if err != nil {
 		fmt.Printf("Error creating DB %q\n", err)
 		return nil, err
 	}
-	_, err = d.Exec(sqlInit)
+	var count int
+	err = d.QueryRow("select count(*) from torrents").Scan(&count)
 	if err != nil {
-		fmt.Printf("Failed to init DB %q\n", err)
 		return nil, err
 	}
-	_, err = d.Exec("PRAGMA foreign_keys = ON")
-	if err != nil {
-		fmt.Printf("Failed to configure DB %q\n", err)
-		return nil, err
-	}
-	return &db{d}, nil
+	fmt.Printf("Found %d existing torrents\n", count)
+	return &db{d, false}, nil
 }
 
-func (d *db) updateTorrent(t Torrent) error {
+func (d *db) saveTorrent(t Torrent) error {
 	tx, err := d.Begin()
 	if err != nil {
 		fmt.Printf("Transaction err %q\n", err)
 	}
-	stmt, err := tx.Prepare(`insert or replace into torrents (
-		name, ih, size, seen) values(?, ?, ?, date('now'))`)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
+	defer tx.Commit()
 
-	r, err := stmt.Exec(t.Name, t.InfoHash, t.Length)
+	var lastId int
+
+	err = tx.QueryRow(`insert into torrents (name, infohash, size, seen) values($1, $2, $3, now()) on conflict (infohash) do update set seen = now() returning id`, t.Name, fmt.Sprintf("%s", t.InfoHash), t.Length).Scan(&lastId)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	stmt, err = tx.Prepare(`insert into files (
-		torrent_id, path, size) values(?, ?, ?)`)
-	if err != nil {
-		return err
-	}
-	lastId, err := r.LastInsertId()
-	if err != nil {
-		return err
-	}
-
-	for _, f := range t.Files {
-		_, err = stmt.Exec(lastId, f.Path, f.Length)
+	// Write tags
+	for _, tag := range t.Tags {
+		tagId, err := d.createTag(tag)
 		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		_, err = tx.Exec("insert into tags_torrents (tag_id, torrent_id) values ($1, $2) on conflict do nothing", tagId, lastId)
+		if err != nil {
+			tx.Rollback()
 			return err
 		}
 	}
-	tx.Commit()
+
+	// Write files
+	for _, f := range t.Files {
+		_, err := tx.Exec(`insert into files (torrent_id, path, size) values($1, $2, $3)`, lastId, f.Path, f.Length)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
 	return nil
 }
 
 func (d *db) torrentExists(ih string) bool {
-	stmt, err := d.Prepare("select seen from torrents where ih = ?")
-	if err != nil {
-		fmt.Printf("Failed to prepare select: %q\n", err)
-		return false
-	}
-	defer stmt.Close()
-
-	rows, err := stmt.Query(ih)
-	if err != nil {
-		fmt.Printf("Failed to exec select: %q\n", err)
-		return false
-	}
+	rows, err := d.Query("select seen from torrents where infohash = $1", fmt.Sprintf("%s", ih))
 	defer rows.Close()
+	if err != nil {
+		fmt.Printf("Failed to exec SQL: %q\n", err)
+		return false
+	}
 	return rows.Next()
+}
+
+func (d *db) createTag(tag string) (tagId int, err error) {
+	if d.debug {
+		fmt.Printf("Writing tag %s\n", tag)
+	}
+
+	err = d.QueryRow("select id from tags where name = $1", tag).Scan(&tagId)
+	if err == nil {
+		if d.debug {
+			fmt.Printf("Found existing tag %s\n", tag)
+		}
+	} else {
+		err = d.QueryRow("insert into tags (name) values ($1) returning id", tag).Scan(&tagId)
+		if err != nil {
+			fmt.Println(err)
+			return -1, err
+		}
+		if d.debug {
+			fmt.Printf("Created new tag %s\n", tag)
+		}
+	}
+	return tagId, nil
 }

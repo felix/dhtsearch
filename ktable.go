@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 const kTableLimit = 5000
 
 // Keep it simple for now
@@ -13,6 +15,10 @@ func newKTable() kTable {
 
 func (k *kTable) add(rn *remoteNode) {
 	if len(k.nodes) >= kTableLimit {
+		return
+	}
+	if rn == nil || rn.id == "" {
+		fmt.Println("Trying to add invalid rn")
 		return
 	}
 	k.nodes = append(k.nodes, rn)

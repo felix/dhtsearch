@@ -49,13 +49,6 @@ func newDHTNode(address string, port int, p chan<- peer) (node *DHTNode) {
 	return
 }
 
-func (d *DHTNode) stop() {
-	d.conn.Close()
-	close(d.peerChan)
-	close(d.packetsIn)
-	close(d.packetsOut)
-}
-
 func (d *DHTNode) run(done <-chan struct{}) error {
 	listener, err := net.ListenPacket("udp4", d.address+":"+strconv.Itoa(d.port))
 	if err != nil {
@@ -63,7 +56,6 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 		return err
 	}
 	d.conn = listener.(*net.UDPConn)
-
 	d.port = d.conn.LocalAddr().(*net.UDPAddr).Port
 
 	if d.debug {
@@ -117,7 +109,7 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 	// Read and process packets from incoming channel
 	var p packet
 	go func() {
-		defer d.stop()
+		defer d.conn.Close()
 		for {
 			select {
 			case <-done:
@@ -149,9 +141,9 @@ func (d *DHTNode) bootstrap() {
 
 func (d *DHTNode) makeNeighbours() {
 	// TODO configurable
-	if len(d.kTable.nodes) < 200 {
+	if len(d.kTable.nodes) < 500 {
 		if d.debug {
-			fmt.Println("Nodes < 200, making neighbours")
+			fmt.Println("Nodes < 500, making neighbours")
 		}
 		if len(d.kTable.nodes) == 0 {
 			d.bootstrap()
@@ -163,7 +155,7 @@ func (d *DHTNode) makeNeighbours() {
 	} else {
 		// Refresh the routing table
 		if d.debug {
-			fmt.Println("Nodes > 200, refreshing kTable")
+			fmt.Println("Nodes > 500, refreshing kTable")
 		}
 		d.kTable.refresh()
 	}
@@ -222,7 +214,9 @@ func (d *DHTNode) processFindNodeResults(rn *remoteNode, nodeList string) {
 		//fmt.Printf("find_node response id len:%d address:%s\n", len(id), addr)
 
 		if d.id == id {
-			fmt.Println("find_nodes ignoring self")
+			if d.debug {
+				fmt.Println("find_nodes ignoring self")
+			}
 			continue
 		}
 

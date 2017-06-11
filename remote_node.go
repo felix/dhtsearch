@@ -3,13 +3,13 @@ package main
 import (
 	"fmt"
 	"net"
-	"time"
+	//"time"
 )
 
 type remoteNode struct {
-	address  net.UDPAddr
-	id       string
-	lastSeen time.Time
+	address net.UDPAddr
+	id      string
+	//lastSeen time.Time
 }
 
 func newRemoteNode(addr net.UDPAddr, id string) *remoteNode {
