@@ -105,11 +105,15 @@ func main() {
 			// Add tags
 			tagTorrent(&t)
 
+			var notWanted = false
 			for _, tag := range t.Tags {
 				if tag == "adult" {
 					fmt.Printf("Skipping %s\n", t.Name)
-					continue
+					notWanted = true
 				}
+			}
+			if notWanted {
+				continue
 			}
 
 			fmt.Printf("Torrrent length: %d, name: %s, tags: %s, url: magnet:?xt=urn:btih:%s\n", length, t.Name, t.Tags, t.InfoHash)

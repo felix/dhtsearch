@@ -11,7 +11,7 @@ var tags = map[string]string{
 	"720":         "720",
 	"hd":          "hd|720|1080",
 	"bdrip":       "bdrip",
-	"adult":       "(xxx|f.ck|porn|p.ssy|uncensored|sexy|urbat|anal|dick)",
+	"adult":       "(xxx|f.ck|porn|p.ssy|censor|sexy|urbat|anal|dick|esbian|milf)",
 	"dvdrip":      "dvdrip",
 	"ebook":       "epub",
 	"kindle":      `\.azw3`,
