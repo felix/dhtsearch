@@ -403,13 +403,15 @@ func decodeMetadata(p peer, md []byte) (*Torrent, error) {
 
 		for i, item := range files {
 			f := item.(map[string]interface{})
-			paths := f["path"].([]string)
-			path := strings.Join(paths[:], "/")
+			paths := f["path"].([]interface{})
+			path := make([]string, len(paths))
+			for j, p := range paths {
+				path[j] = p.(string)
+			}
 			bt.Files[i] = File{
-				Path:   path,
+				Path:   strings.Join(path[:], "/"),
 				Length: f["length"].(int),
 			}
-			fmt.Printf("got file %z\n", bt.Files[i])
 		}
 	} else if _, ok := info["length"]; ok {
 		bt.Length = info["length"].(int)
