@@ -133,6 +133,7 @@ func (d *DHTNode) bootstrap() {
 		addr, err := net.ResolveUDPAddr("udp4", s)
 		if err != nil {
 			fmt.Printf("Error parsing bootstrap address: %s\n", err)
+			return
 		}
 		rn := newRemoteNode(*addr, "")
 		d.findNode(rn, "")
