@@ -11,7 +11,7 @@ var tags = map[string]string{
 	"720":         "720",
 	"hd":          "hd|720|1080",
 	"bdrip":       "bdrip",
-	"adult":       "(xxx|f.ck|p(orn|ussy)|censor|sex|urbat|a(ss|nal)|(di|co)ck|esbian|milf|lust|gay)",
+	"adult":       `(xxx|f.ck|p(orn|ussy)|censor|sex|urbat|a(ss|nal)\s|(di|co)ck|esbian|milf|lust|gay)`,
 	"dvdrip":      "dvdrip",
 	"ebook":       "epub",
 	"application": `\.(apk|exe|msi|dmg)$`,
@@ -22,6 +22,7 @@ var tags = map[string]string{
 	"video":       `\.(3g2|3gp|amv|asf|avi|drc|f4a|f4b|f4p|f4v|flv|gif|gifv|m2v|m4p|m4v|mkv|mng|mov|mp2|mp4|mpe|mpeg|mpg|mpv|mxf|net|nsv|ogv|qt|rm|rmvb|roq|svi|vob|webm|wmv|yuv)$`,
 	"audio":       `\.(aa|aac|aax|act|aiff|amr|ape|au|awb|dct|dss|dvf|flac|gsm|iklax|ivs|m4a|m4b|mmf|mp3|mpc|msv|ogg|opus|ra|raw|sln|tta|vox|wav|wma|wv)$`,
 	"document":    `\.(cbr|cbz|cb7|cbt|cba|epub|djvu|fb2|ibook|azw.|lit|prc|mobi|pdb|pdb|oxps|xps)$`,
+	"font":        `(font|\.(ttf|fon)$)`,
 }
 
 var tagREs map[string]*regexp.Regexp

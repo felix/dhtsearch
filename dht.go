@@ -45,7 +45,7 @@ func newDHTNode(address string, port int, p chan<- peer) (node *DHTNode) {
 
 	// Get random id for this node
 	node.id = genInfoHash()
-	node.kTable = kTable{make([]*remoteNode, 0)}
+	node.kTable.refresh()
 	return
 }
 
@@ -142,23 +142,17 @@ func (d *DHTNode) bootstrap() {
 
 func (d *DHTNode) makeNeighbours() {
 	// TODO configurable
-	if len(d.kTable.nodes) < 500 {
+	if !d.kTable.isFull() {
 		if d.debug {
-			fmt.Println("Nodes < 500, making neighbours")
+			fmt.Println("Making neighbours")
 		}
-		if len(d.kTable.nodes) == 0 {
+		if d.kTable.isEmpty() {
 			d.bootstrap()
 		} else {
-			for _, rn := range d.kTable.nodes {
+			for _, rn := range d.kTable.getNodes() {
 				d.findNode(rn, rn.id)
 			}
 		}
-	} else {
-		// Refresh the routing table
-		if d.debug {
-			fmt.Println("Nodes > 500, refreshing kTable")
-		}
-		d.kTable.refresh()
 	}
 }
 
