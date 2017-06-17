@@ -18,19 +18,19 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "public")
 	w.WriteHeader(200)
-	fmt.Fprintf(w, "{\n")
+	fmt.Fprintf(w, "{")
 	first := true
 	expvar.Do(func(kv expvar.KeyValue) {
 		if kv.Key == "cmdline" || kv.Key == "memstats" {
 			return
 		}
 		if !first {
-			fmt.Fprintf(w, ",\n")
+			fmt.Fprintf(w, ",")
 		}
 		first = false
 		fmt.Fprintf(w, "%q: %s", kv.Key, kv.Value)
 	})
-	fmt.Fprintf(w, "\n}\n")
+	fmt.Fprintf(w, "}")
 }
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
@@ -112,6 +112,13 @@ var humanSize = function (bytes) {
 	}
 	return (bytes / Math.pow(1024, sizeIndex)).toFixed(0) + sizes[sizeIndex]
 }
+var processResponse = function (resp) {
+	if (resp.status === 200 || resp.status === 0) {
+		return resp.json()
+	} else {
+		return new Error(resp.statusText)
+	}
+}
 var search = function (term) {
 	var oldButton = bEl.innerHTML
 	bEl.innerHTML = 'Searching'
@@ -123,13 +130,7 @@ var search = function (term) {
 		query = 'q=' + term.trim()
     }
 	fetch('/search?' + query)
-	.then(function (resp) {
-		if (resp.status === 200 || resp.status === 0) {
-			return resp.json()
-		} else {
-			return new Error(resp.statusText)
-		}
-	})
+	.then(processResponse)
 	.then(function (data) {
 		var pre = [
 		'<p>Displaying ', data.length, ' torrents.</p>',
@@ -191,8 +192,10 @@ var sEl = document.getElementById('search')
 var bEl = document.getElementById('go')
 bEl.addEventListener('click', function () {
 	var term = sEl.value
-	console.log('Search term: ', term)
-	search(term)
+	if (term.length > 2) {
+		console.log('Search term: ', term)
+		search(term)
+	}
 })
 sEl.addEventListener('keyup', function (e) {
 	if (e.keyCode === 13) {
@@ -202,13 +205,7 @@ sEl.addEventListener('keyup', function (e) {
 var statsEl = document.getElementById('stats')
 var getStats = function () {
 	fetch('/stats')
-	.then(function (resp) {
-		if (resp.status === 200 || resp.status === 0) {
-			return resp.json()
-		} else {
-			return new Error(resp.statusText)
-		}
-	})
+	.then(processResponse)
 	.then(function (data) {
 		statsEl.innerHTML = Object.keys(data).map(function (k) {
 			return [
