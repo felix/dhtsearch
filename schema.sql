@@ -7,7 +7,7 @@ create table if not exists torrents (
 );
 create table if not exists files (
     id serial not null primary key,
-    torrent_id integer not null references torrents,
+    torrent_id integer not null references torrents on delete cascade,
     path text,
     size bigint
 );
@@ -16,7 +16,7 @@ create table if not exists tags (
     name text
 );
 create table if not exists tags_torrents (
-    tag_id integer not null references tags,
-    torrent_id integer not null references torrents,
+    tag_id integer not null references tags on delete cascade,
+    torrent_id integer not null references torrents on delete cascade,
     primary key (tag_id, torrent_id)
 );
