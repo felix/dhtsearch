@@ -1,6 +1,7 @@
 # DHT Search
 
-This is a basic DHT crawler and even more basic searcher of the indexed data.
+This is a Mainline DHT crawler and BitTorrent client which also provides an
+HTTP interface to query the indexed data.
 
 Distributed Hash Table (DHT) is a distributed system storing key/value pairs,
 in this case it is specifically Mainline DHT, the type used by BitTorrent
@@ -11,10 +12,8 @@ The crawler joins the DHT network and listens to the conversations between
 nodes, keeping track of interesting packets. The most interesting packets are
 those where another node announces they have a torrent available.
 
-BitTorrent clients usually raise red flags regarding their legality. This
-client utilises a number of protocols to stay in the DHT network and to
-download the torrent metadata. The actual files hosted by the other node are
-not retrieved.
+This BitTorrent client only downloads the torrent metadata. The actual files
+hosted by the remote nodes are not retrieved.
 
 ## Tagging
 
@@ -24,7 +23,7 @@ default all files tagged 'adult' are not indexed.
 
 ## Installation
 
-You will need the dependencies. They have been vendored using the
+All dependencies have been vendored using the
 [dep](https://github.com/golang/dep) tool so installation with a recent Go
 version should be as simple as:
 
@@ -61,13 +60,13 @@ following nodes.
 
 ## TODO
 
-- Manage downloading threads to reduce memory consumption
+- Manage downloading threads to reduce memory consumption.
 - Add tests!
-- Enable rate limiting
+- Enable rate limiting.
 - Enable configuration of tags and reject patterns.
 - Enable FTS on database queries.
 - Improve our manners on the DHT network (replies etc.).
 - Improve the routing table implementation.
 - Improve tagging by checking the torrent name against Unicode sections.
-- Improve the interface
-- Add reults pagination.
+- Improve the interface.
+- Add results pagination.
