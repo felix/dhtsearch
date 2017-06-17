@@ -24,6 +24,7 @@ var (
 	peersSkipped    = expvar.NewInt("peers_skipped")
 	torrentsSkipped = expvar.NewInt("torrents_skipped")
 	torrentsSaved   = expvar.NewInt("torrents_saved")
+	torrentsTotal   = expvar.NewInt("torrents_total")
 	start           = time.Now()
 )
 
@@ -168,6 +169,7 @@ func main() {
 				fmt.Printf("Error saving torrent: %q\n", err)
 			}
 			torrentsSaved.Add(1)
+			torrentsTotal.Add(1)
 		}
 	}
 }

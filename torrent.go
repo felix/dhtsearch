@@ -150,7 +150,9 @@ const (
 	order by seen desc
 	limit 50`
 
-	sqlSelectFiles = `select * from files where torrent_id = $1`
+	sqlSelectFiles = `select * from files
+	where torrent_id = $1
+	order by path asc`
 
 	sqlInsertFile = `insert into files (
 		torrent_id, path, size

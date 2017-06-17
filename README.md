@@ -16,6 +16,12 @@ client utilises a number of protocols to stay in the DHT network and to
 download the torrent metadata. The actual files hosted by the other node are
 not retrieved.
 
+## Tagging
+
+As torrent metadata is fetched the torrent is tagged using a set of regular
+expressions matched against the torrent name and the files in the torrent. By
+default all files tagged 'adult' are not indexed.
+
 ## Installation
 
 You will need the dependencies. They have been vendored using the
@@ -62,4 +68,6 @@ following nodes.
 - Enable FTS on database queries.
 - Improve our manners on the DHT network (replies etc.).
 - Improve the routing table implementation.
-- Improve the interface.
+- Improve tagging by checking the torrent name against Unicode sections.
+- Improve the interface
+- Add reults pagination.

@@ -16,7 +16,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 
 func statsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Cache-Control", "public")
 	w.WriteHeader(200)
 	fmt.Fprintf(w, "{\n")
 	first := true
@@ -69,24 +69,32 @@ var html = []byte(`
 	<head>
 		<title>DHT search</title>
 		<style>
-		body { padding:0;margin:0; }
+		body { padding:0;margin:0;color:#666;line-height:1.5;font-size:16px; }
 		.header { padding:1em;border-bottom:1px solid #555; }
 		input { padding:2px; }
-		.page { padding:2em; }
+		.page { padding:1em 2em; }
 		ul { list-style:none;padding:0;margin:0; }
 		.torrent { margin-bottom:1em; }
 		.torrent__name { display:block; }
-		.torrent__size, .torrent__file-count, .torrent__seen { padding-right:1em; }
-		.torrent__tags { display:block; }
-		.tag { display:inline-block;margin-right:2px;padding:3px 5px;border:1px solid #ddd;border-radius:3px; }
-		.files { padding-left:2em; }
-		.files__file { display:none; }
+		.torrent__magnet { display:block; }
+		.torrent__size, .torrent__file-count, .torrent__seen, .torrent__tags { padding-right:1em; }
+		.tag { display:inline;text-decoration:none; }
+		.files { padding-left:2em;font-family:monospace;font-size:.75em; }
+		.files { display:none; }
+		.files--active { display:block; }
+		.file__size { margin-left:.5em;font-size:.875em; }
+		.stats { display:block;margin:0;margin-top:1em; }
+		.stats__key, .stats__value { display:inline-block;font-size:.75em;padding:0;margin:0; }
+		.stats__key { margin-right:.25em;color:#222; }
+		.stats__key:after { content:':'; }
+		.stats__value { margin-right:.5em;color:#888; }
 		</style>
 	</head>
 	<body id="body">
 		<div class="header">
-		<input id="search" type="text" name="search" />
-		<button id="go">Search</button>
+		<input id="search" type="text" name="search" placeholder="Search" />
+		<button id="go">Go</button>
+		<dl id="stats" class="stats"></dl>
 		</div>
 		<div id="page" class="page">
 		</div>
@@ -100,14 +108,11 @@ var humanSize = function (bytes) {
 	if (sizeIndex >= sizes.length) {
 		sizeIndex = sizes.length - 1
 	}
-	return (bytes / Math.pow(1024, sizeIndex)).toFixed(0) + ' ' + sizes[sizeIndex]
-}
-var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-var humanDate = function (iso) {
-	var d = new Date(iso)
-	return [d.getDate(), months[d.getMonth()], d.getFullYear()].join(' ')
+	return (bytes / Math.pow(1024, sizeIndex)).toFixed(0) + sizes[sizeIndex]
 }
 var search = function (term) {
+	var oldButton = bEl.innerHTML
+	bEl.innerHTML = 'Searching'
 	var query = ''
 	var tIdx = term.indexOf('tag:')
 	if (tIdx >= 0) {
@@ -129,18 +134,19 @@ var search = function (term) {
 		'<ul id="results">'
 		].join('')
 		var torrents = data.map(function (t) {
+			var magnet = 'magnet:?xt=urn:btih:' + t.infohash
 			var pre = [
 			'<li class="torrent">',
-			'<a class="torrent__name" href="magnet:?xt=urn:btih:', t.infohash, '">', t.name, '</a>',
-			'<span class="torrent__size">', humanSize(t.size), '</span>',
-			'<span class="torrent__file-count">', t.files.length, ' files</span>',
-			'<span class="torrent__seen">Last seen: <time datetime="', t.seen, '">', humanDate(t.seen), '</time></span>',
+			'<a class="torrent__name" href="', magnet, '">', t.name, '</a>',
+			'<span class="torrent__magnet">', magnet, '</span>',
+			'<span class="torrent__size">Size:&nbsp;', humanSize(t.size), '</span>',
+			'<span class="torrent__seen">Last&nbsp;seen:&nbsp;<time datetime="', t.seen, '">', new Date(t.seen).toLocaleString(), '</time></span>'
 			].join('')
 			var tags = ''
 			if (t.tags.length) {
 				tags = [
-				'<span class="torrent__tags">',
-				t.tags.map(function (g) { return '<a class="tag" href="/tags/' + g + '">' + g + '</a>' }).join(''),
+				'<span class="torrent__tags">Tags: ',
+				t.tags.map(function (g) { return '<a class="tag" href="/tags/' + g + '">' + g + '</a>' }).join(',&nbsp;'),
 				'</span>'
 				].join('')
 			}
@@ -150,11 +156,15 @@ var search = function (term) {
 					return [
 					'<li class="files__file file">',
 					'<span class="file__path">', f.path, '</span>',
-					'<span class="file__size">', humanSize(f.size), '</span>',
+					'<span class="file__size">[', humanSize(f.size), ']</span>',
 					'</li>'
 					].join('')
 				})
-				files = '<ul class="files">' + fHtml.join('') + '</ul>'
+				files = [
+				'<span class="torrent__file-count">Files:&nbsp;', t.files.length, '</span>',
+				'<a class="toggler" href="#">toggle files</a><ul class="files">',
+				fHtml.join(''),
+				'</ul>'].join('')
 			}
 			var post = [
 			'</li>'
@@ -162,7 +172,16 @@ var search = function (term) {
 			return pre + tags + files + post
 		}).join('')
 		var post = '</ul>'
+		bEl.innerHTML = oldButton
 		pEl.innerHTML = pre + torrents + post
+		var togglers = document.getElementsByClassName('toggler')
+		for (var i = 0; i < togglers.length; i += 1) {
+			var el = togglers[i]
+			el.addEventListener('click', function (e) {
+				e.preventDefault()
+				e.target.nextElementSibling.classList.toggle('files--active')
+			})
+		}
 	})
 }
 var pEl = document.getElementById('page')
@@ -178,6 +197,30 @@ sEl.addEventListener('keyup', function (e) {
 		bEl.click()
 	}
 })
+var statsEl = document.getElementById('stats')
+var getStats = function () {
+	fetch('/stats')
+	.then(function (resp) {
+		if (resp.status === 200 || resp.status === 0) {
+			return resp.json()
+		} else {
+			return new Error(resp.statusText)
+		}
+	})
+	.then(function (data) {
+		statsEl.innerHTML = Object.keys(data).map(function (k) {
+			return [
+			'<dt class="stats__key">',
+			k.replace(/_/g,'&nbsp;'),
+			'</dt><dd class="stats__value">',
+			k.indexOf('bytes') === -1 ? data[k] : humanSize(data[k]),
+			'</dd>'
+			].join('')
+		}).join('')
+		setTimeout(getStats, 5000)
+	})
+}
+getStats()
 		</script>
 	</body>
 </html>
