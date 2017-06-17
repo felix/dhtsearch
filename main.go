@@ -96,16 +96,14 @@ func main() {
 	}
 
 	// Filter torrents
-	processed := make(chan peer)
+	filteredPeers := make(chan peer)
 
-	// Create BT nodes
-	for i := 0; i < numNodes+3; i++ {
-		btClient := newBTClient(processed, torrents)
-		btClient.debug = debug
-		err = btClient.run(done)
-		if err != nil {
-			os.Exit(1)
-		}
+	// Create BT node
+	btClient := newBTClient(filteredPeers, torrents)
+	btClient.debug = debug
+	err = btClient.run(done)
+	if err != nil {
+		os.Exit(1)
 	}
 
 	// HTTP Server
@@ -142,7 +140,7 @@ func main() {
 				peersSkipped.Add(1)
 				continue
 			}
-			processed <- p
+			filteredPeers <- p
 
 		case t = <-torrents:
 			length := t.Size
