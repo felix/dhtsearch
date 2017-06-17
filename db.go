@@ -22,7 +22,6 @@ func newDB(dsn string) (*database, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("Found %d existing torrents\n", count)
 	torrentsTotal.Set(int64(count))
 	return &database{d, false}, nil
 }

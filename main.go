@@ -41,11 +41,13 @@ func main() {
 
 	var basePort, numNodes int
 	var debug bool
+	var quiet bool
 	var noHttp bool
 	var dsn, httpAddress string
 	flag.IntVar(&basePort, "port", 6881, "listen port (and first of multiple ports)")
 	flag.IntVar(&numNodes, "nodes", 1, "number of nodes to start")
 	flag.BoolVar(&debug, "debug", false, "provide debug output")
+	flag.BoolVar(&quiet, "quiet", false, "log only errors")
 	flag.StringVar(&dsn, "dsn", "postgres://dht:dht@localhost/dht?sslmode=disable", "DB DSN")
 	flag.BoolVar(&noHttp, "no-http", false, "no HTTP service")
 	flag.StringVar(&httpAddress, "http", "localhost:6880", "HTTP listen address:port")
@@ -113,7 +115,9 @@ func main() {
 		http.HandleFunc("/search", searchHandler)
 		sock, _ := net.Listen("tcp", httpAddress)
 		go func() {
-			fmt.Printf("HTTP now available at %s\n", httpAddress)
+			if !quiet {
+				fmt.Printf("HTTP now available at %s\n", httpAddress)
+			}
 			http.Serve(sock, nil)
 		}()
 	}
@@ -151,7 +155,9 @@ func main() {
 			var notWanted = false
 			for _, tag := range t.Tags {
 				if tag == "adult" {
-					fmt.Printf("Skipping %s\n", t.Name)
+					if !quiet {
+						fmt.Printf("Skipping torrent: %q\n", t.Name)
+					}
 					notWanted = true
 				}
 			}
@@ -160,11 +166,13 @@ func main() {
 				continue
 			}
 
-			fmt.Printf("Torrrent length: %d, name: %s, tags: %s, url: magnet:?xt=urn:btih:%s\n", length, t.Name, t.Tags, t.InfoHash)
-
 			err := t.save()
 			if err != nil {
 				fmt.Printf("Error saving torrent: %q\n", err)
+				continue
+			}
+			if !quiet {
+				fmt.Printf("Torrrent added, length: %d, name: %q, tags: %s, url: magnet:?xt=urn:btih:%s\n", length, t.Name, t.Tags, t.InfoHash)
 			}
 			torrentsSaved.Add(1)
 			torrentsTotal.Add(1)

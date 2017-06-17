@@ -103,9 +103,10 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 					if d.debug {
 						fmt.Printf("Error writing packet %s\n", err)
 					}
+				} else {
+					dhtPacketsOut.Add(1)
 				}
 				dhtBytesOut.Add(int64(b))
-				dhtPacketsOut.Add(1)
 			}
 		}
 	}()
