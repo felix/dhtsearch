@@ -45,7 +45,7 @@ func newDHTNode(address string, port int, p chan<- peer) (node *DHTNode) {
 
 	// Get random id for this node
 	node.id = genInfoHash()
-	node.kTable = newKTable(address, port, node.id)
+	node.kTable = newKTable(node.id)
 	return
 }
 
@@ -154,6 +154,9 @@ func (d *DHTNode) makeNeighbours() {
 			fmt.Println("Making neighbours")
 		}
 		if d.kTable.isEmpty() {
+			// Get a new id
+			d.id = genInfoHash()
+			d.kTable.id = d.id
 			d.bootstrap()
 		} else {
 			for _, rn := range d.kTable.getNodes() {
@@ -228,7 +231,13 @@ func (d *DHTNode) processFindNodeResults(rn *remoteNode, nodeList string) {
 			fmt.Printf("Error parsing node from find_find response: %s\n", err)
 			continue
 		}
-		// TODO check IP and ports are valid and not self
+		// Check IP and ports are valid and not self
+		if (address.IP.String() == d.address &&
+			address.Port == d.port) ||
+			id == d.id || id == "" {
+			fmt.Println("Trying to add invalid node")
+			continue
+		}
 		rn := newRemoteNode(*address, id)
 		d.kTable.add(rn)
 		count = count + 1

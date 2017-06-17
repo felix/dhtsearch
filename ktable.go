@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -10,14 +9,12 @@ const kTableLimit = 1000
 // Keep it simple for now
 type kTable struct {
 	sync.Mutex
-	address string
-	port    int
-	id      string
-	nodes   []*remoteNode
+	id    string
+	nodes []*remoteNode
 }
 
-func newKTable(address string, port int, id string) kTable {
-	k := kTable{address: address, port: port, id: id}
+func newKTable(id string) kTable {
+	k := kTable{id: id}
 	k.refresh()
 	return k
 }
@@ -25,16 +22,6 @@ func newKTable(address string, port int, id string) kTable {
 func (k *kTable) add(rn *remoteNode) {
 	k.Lock()
 	defer k.Unlock()
-	if rn == nil || rn.id == "" {
-		fmt.Println("Trying to add invalid rn")
-		return
-	}
-	if (rn.address.IP.String() == k.address &&
-		rn.address.Port == k.port) ||
-		rn.id == k.id {
-		fmt.Println("Trying to add self")
-		return
-	}
 	k.nodes = append(k.nodes, rn)
 }
 
