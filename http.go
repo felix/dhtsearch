@@ -65,9 +65,11 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 var html = []byte(`
+<!doctype html>
 <html>
 	<head>
 		<title>DHT search</title>
+		<meta charset="UTF-8">
 		<style>
 		body { padding:0;margin:0;color:#666;line-height:1.5;font-size:16px; }
 		.header { padding:1em;border-bottom:1px solid #555; }
