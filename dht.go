@@ -45,7 +45,7 @@ func newDHTNode(address string, port int, p chan<- peer) (node *DHTNode) {
 
 	// Get random id for this node
 	node.id = genInfoHash()
-	node.kTable.refresh()
+	node.kTable = newKTable(address, port, node.id)
 	return
 }
 
@@ -80,6 +80,8 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 				fmt.Println("UDP read error", err)
 				continue
 			}
+			dhtBytesIn.Add(int64(c))
+			dhtPacketsIn.Add(1)
 			// Chop
 			b = b[0:c]
 			d.packetsIn <- packet{b, *addr}
@@ -94,11 +96,16 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 			select {
 			case p = <-d.packetsOut:
 				d.conn.SetWriteDeadline(time.Now().Add(time.Second * 10))
-				_, err := d.conn.WriteToUDP(p.b, &p.raddr)
+				b, err := d.conn.WriteToUDP(p.b, &p.raddr)
 				if err != nil {
+					dhtErrorPackets.Add(1)
 					// TODO remove from kTAble
-					fmt.Printf("Error writing packet %s\n", err)
+					if d.debug {
+						fmt.Printf("Error writing packet %s\n", err)
+					}
 				}
+				dhtBytesOut.Add(int64(b))
+				dhtPacketsOut.Add(1)
 			}
 		}
 	}()
@@ -152,6 +159,7 @@ func (d *DHTNode) makeNeighbours() {
 			for _, rn := range d.kTable.getNodes() {
 				d.findNode(rn, rn.id)
 			}
+			d.kTable.refresh()
 		}
 	}
 }

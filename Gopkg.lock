@@ -7,9 +7,15 @@
   packages = ["."]
   revision = "cd16be9308d0886a1fe2b5e1bb5e0bc935cd9217"
 
+[[projects]]
+  branch = "master"
+  name = "github.com/jmoiron/sqlx"
+  packages = [".","reflectx"]
+  revision = "d9bd385d68c068f1fabb5057e3dedcbcbb039d0f"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ea0a890188b8a69e2973eaaf879505333e2893781b691e2c6d1b50b75474e819"
+  inputs-digest = "bd509bac46bff51ea8b408084d6725a34aaa7ab64d15e8b09c1a2a4d7d2176b1"
   solver-name = "gps-cdcl"
   solver-version = 1

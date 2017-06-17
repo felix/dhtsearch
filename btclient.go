@@ -1,5 +1,7 @@
 package main
 
+// Lifted and adapted from github.com/shiyanhui/dht
+
 import (
 	"bytes"
 	"crypto/sha1"
@@ -43,20 +45,6 @@ var handshakePrefix = []byte{
 type peer struct {
 	address net.UDPAddr
 	id      string
-}
-
-type File struct {
-	Path   string
-	Length int
-}
-
-// Data for persistent storage
-type Torrent struct {
-	InfoHash string
-	Name     string
-	Files    []File
-	Length   int
-	Tags     []string
 }
 
 type btClient struct {
@@ -122,6 +110,7 @@ func read(conn *net.TCPConn, size int, data *bytes.Buffer) error {
 	if err != nil || n != int64(size) {
 		return errors.New("read error")
 	}
+	btBytesIn.Add(int64(size))
 	return nil
 }
 
@@ -132,6 +121,7 @@ func readMessage(conn *net.TCPConn, data *bytes.Buffer) (
 	if err = read(conn, 4, data); err != nil {
 		return
 	}
+	btBytesIn.Add(4)
 
 	length = int(bytes2int(data.Next(4)))
 	if length == 0 {
@@ -141,6 +131,7 @@ func readMessage(conn *net.TCPConn, data *bytes.Buffer) (
 	if err = read(conn, length, data); err != nil {
 		return
 	}
+	btBytesIn.Add(int64(length))
 	return
 }
 
@@ -152,7 +143,8 @@ func sendMessage(conn *net.TCPConn, data []byte) error {
 	binary.Write(buffer, binary.BigEndian, length)
 
 	conn.SetWriteDeadline(time.Now().Add(time.Second * 10))
-	_, err := conn.Write(append(buffer.Bytes(), data...))
+	b, err := conn.Write(append(buffer.Bytes(), data...))
+	btBytesOut.Add(int64(b))
 	return err
 }
 
@@ -164,7 +156,8 @@ func sendHandshake(conn *net.TCPConn, infoHash, peerID []byte) error {
 	copy(data[48:], peerID)
 
 	conn.SetWriteDeadline(time.Now().Add(time.Second * 10))
-	_, err := conn.Write(data)
+	b, err := conn.Write(data)
+	btBytesOut.Add(int64(b))
 	return err
 }
 
@@ -279,6 +272,7 @@ func (bt *btClient) fetchMetadata(p peer) {
 		sendExtHandshake(conn) != nil {
 		return
 	}
+	btBytesIn.Add(68)
 
 	for {
 		length, err = readMessage(conn, data)
@@ -408,13 +402,17 @@ func decodeMetadata(p peer, md []byte) (*Torrent, error) {
 			for j, p := range paths {
 				path[j] = p.(string)
 			}
+			fSize := f["length"].(int)
 			bt.Files[i] = File{
-				Path:   strings.Join(path[:], "/"),
-				Length: f["length"].(int),
+				// Assume Unix path sep
+				Path: strings.Join(path[:], "/"),
+				Size: fSize,
 			}
+			// Ensure the torrent size totals all files'
+			bt.Size = bt.Size + fSize
 		}
 	} else if _, ok := info["length"]; ok {
-		bt.Length = info["length"].(int)
+		bt.Size = info["length"].(int)
 	}
 	return &bt, nil
 }

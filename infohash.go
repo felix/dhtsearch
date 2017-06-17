@@ -11,53 +11,12 @@ import (
 
 const ihLength = 20
 
-/*
-// Info hashes (and node Ids) are 160 bits but are more often represented
-// as 20 byte string
-type infoHash []byte
-
-func (ih infoHash) string() string {
-	return fmt.Sprintf("%x", string(ih))
-}
-
-func (ih infoHash) asHex() string {
-	return hex.EncodeToString([]byte(ih))
-}
-
-func (ih infoHash) isValid() bool {
-	return len(ih) == ihLength
-}
-
-func (ih infoHash) genNeighbour(second infoHash) infoHash {
-	s := append(second[:10], ih[10:]...)
-	return infoHash(s)
-}
-
-func (ih infoHash) Equals(other infoHash) bool {
-	if len(ih) != ihLength {
-		fmt.Printf("infoHash is incorrect length %d\n", len(ih))
-		return false
-	}
-	if len(other) != ihLength {
-		fmt.Printf("infoHashs are inequal length %d != %d\n", len(ih), len(other))
-		return false
-	}
-	for i := 0; i < len(ih); i++ {
-		if ih[i] != other[i] {
-			return false
-		}
-	}
-	return true
-}
-*/
-
 func genInfoHash() string {
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 	hash := sha1.New()
 	io.WriteString(hash, time.Now().String())
 	io.WriteString(hash, string(random.Int()))
 	ih := hash.Sum(nil)
-	//fmt.Printf("Generated infoHash len:%d %s\n", len(ih), ih)
 	return string(ih)
 }
 

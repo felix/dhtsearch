@@ -1,5 +1,7 @@
 package main
 
+// Lifted from github.com/shiyanhui/dht
+
 import (
 	"bytes"
 	"errors"

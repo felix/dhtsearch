@@ -1,21 +1,53 @@
 package main
 
 import (
+	"expvar"
 	"flag"
 	"fmt"
-	"github.com/pkg/profile"
+	"time"
+	//"github.com/pkg/profile"
+	"net"
+	"net/http"
 	"os"
 )
 
+// Exported vars
+var (
+	dhtPacketsIn    = expvar.NewInt("dht_packets_in")
+	dhtPacketsOut   = expvar.NewInt("dht_packets_out")
+	dhtErrorPackets = expvar.NewInt("dht_error_packets")
+	dhtBytesIn      = expvar.NewInt("dht_bytes_in")
+	dhtBytesOut     = expvar.NewInt("dht_bytes_out")
+	btBytesIn       = expvar.NewInt("bt_bytes_in")
+	btBytesOut      = expvar.NewInt("bt_bytes_out")
+	peersAnnounced  = expvar.NewInt("peers_announced")
+	peersSkipped    = expvar.NewInt("peers_skipped")
+	torrentsSkipped = expvar.NewInt("torrents_skipped")
+	torrentsSaved   = expvar.NewInt("torrents_saved")
+	start           = time.Now()
+)
+
+// Global
+var DB *database
+
+func uptime() interface{} {
+	return int64(time.Since(start).Seconds())
+}
+
 func main() {
-	defer profile.Start(profile.CPUProfile).Stop()
+	//defer profile.Start(profile.CPUProfile).Stop()
+	expvar.Publish("uptime", expvar.Func(uptime))
+
 	var basePort, numNodes int
-	var debug bool = false
-	var dsn string
+	var debug bool
+	var noHttp bool
+	var dsn, httpAddress string
 	flag.IntVar(&basePort, "port", 6881, "listen port (and first of multiple ports)")
 	flag.IntVar(&numNodes, "nodes", 1, "number of nodes to start")
 	flag.BoolVar(&debug, "debug", false, "provide debug output")
 	flag.StringVar(&dsn, "dsn", "postgres://dht:dht@localhost/dht?sslmode=disable", "DB DSN")
+	flag.BoolVar(&noHttp, "no-http", false, "no HTTP service")
+	flag.StringVar(&httpAddress, "http", "localhost:6880", "HTTP listen address:port")
 	flag.Parse()
 
 	initTagRegexps()
@@ -34,16 +66,17 @@ func main() {
 	}
 
 	// Persistence
-	db, err := newDB(dsn)
+	var err error
+	DB, err = newDB(dsn)
 	if err != nil {
 		os.Exit(1)
 	}
-	db.debug = debug
-	defer db.Close()
+	DB.debug = debug
+	defer DB.Close()
 
 	// Initialise tags
 	for tag, _ := range tags {
-		_, err := db.createTag(tag)
+		_, err := createTag(tag)
 		if err != nil {
 			fmt.Printf("Error creating tag %s: %q\n", tag, err)
 		}
@@ -65,13 +98,25 @@ func main() {
 	processed := make(chan peer)
 
 	// Create BT nodes
-	for i := 0; i < numNodes; i++ {
+	for i := 0; i < numNodes+3; i++ {
 		btClient := newBTClient(processed, torrents)
 		btClient.debug = debug
 		err = btClient.run(done)
 		if err != nil {
 			os.Exit(1)
 		}
+	}
+
+	// HTTP Server
+	if !noHttp {
+		http.HandleFunc("/", indexHandler)
+		http.HandleFunc("/stats", statsHandler)
+		http.HandleFunc("/search", searchHandler)
+		sock, _ := net.Listen("tcp", httpAddress)
+		go func() {
+			fmt.Printf("HTTP now available at %s\n", httpAddress)
+			http.Serve(sock, nil)
+		}()
 	}
 
 	// Simple cache of most recent
@@ -83,24 +128,23 @@ func main() {
 		select {
 		case p = <-peers:
 			if ok := cache[p.id]; ok {
-				//fmt.Printf("Torrent in cache, skipping\n")
+				peersSkipped.Add(1)
 				continue
 			}
+			peersAnnounced.Add(1)
 			if len(cache) > 2000 {
 				fmt.Printf("Flushing cache\n")
 				cache = make(map[string]bool)
 			}
 			cache[p.id] = true
-			if db.torrentExists(p.id) {
+			if torrentExists(p.id) {
+				peersSkipped.Add(1)
 				continue
 			}
 			processed <- p
 
 		case t = <-torrents:
-			length := t.Length
-			for _, f := range t.Files {
-				length = length + f.Length
-			}
+			length := t.Size
 
 			// Add tags
 			tagTorrent(&t)
@@ -113,15 +157,17 @@ func main() {
 				}
 			}
 			if notWanted {
+				torrentsSkipped.Add(1)
 				continue
 			}
 
 			fmt.Printf("Torrrent length: %d, name: %s, tags: %s, url: magnet:?xt=urn:btih:%s\n", length, t.Name, t.Tags, t.InfoHash)
 
-			err := db.saveTorrent(t)
+			err := t.save()
 			if err != nil {
 				fmt.Printf("Error saving torrent: %q\n", err)
 			}
+			torrentsSaved.Add(1)
 		}
 	}
 }
