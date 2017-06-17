@@ -3,7 +3,7 @@ create table if not exists torrents (
     infohash character varying(40) unique,
     size bigint,
     name text,
-    seen timestamp without time zone
+    seen timestamp with time zone
 );
 create table if not exists files (
     id serial not null primary key,
