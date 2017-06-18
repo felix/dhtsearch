@@ -8,15 +8,19 @@ import (
 )
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "public")
+	if r.URL.Path != "/" {
+		w.WriteHeader(404)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
 	w.WriteHeader(200)
 	w.Write(html)
 }
 
 func statsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Cache-Control", "public")
+	w.Header().Set("Cache-Control", "no-cache")
 	w.WriteHeader(200)
 	fmt.Fprintf(w, "{")
 	first := true

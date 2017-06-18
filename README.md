@@ -97,5 +97,4 @@ following nodes.
 - Improve our manners on the DHT network (replies etc.).
 - Improve the routing table implementation.
 - Improve tagging by checking the torrent name against Unicode sections.
-- Improve the interface.
 - Add results pagination.
