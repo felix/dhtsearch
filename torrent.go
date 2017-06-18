@@ -40,10 +40,10 @@ func (t *Torrent) save() error {
 	}
 	defer tx.Commit()
 
-	var lastId int
+	var torrentId int
 
 	// Need to turn infohash into string here
-	err = tx.QueryRow(sqlInsertTorrent, t.Name, fmt.Sprintf("%s", t.InfoHash), t.Size).Scan(&lastId)
+	err = tx.QueryRow(sqlInsertTorrent, t.Name, fmt.Sprintf("%s", t.InfoHash), t.Size).Scan(&torrentId)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -56,7 +56,7 @@ func (t *Torrent) save() error {
 			tx.Rollback()
 			return err
 		}
-		_, err = tx.Exec(sqlInsertTagTorrent, tagId, lastId)
+		_, err = tx.Exec(sqlInsertTagTorrent, tagId, torrentId)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -65,11 +65,18 @@ func (t *Torrent) save() error {
 
 	// Write files
 	for _, f := range t.Files {
-		_, err := tx.Exec(sqlInsertFile, lastId, f.Path, f.Size)
+		_, err := tx.Exec(sqlInsertFile, torrentId, f.Path, f.Size)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
+	}
+
+	// Should this be outside the transaction?
+	tx.Exec(sqlUpdateFTSVectors, torrentId)
+	if err != nil {
+		tx.Rollback()
+		return err
 	}
 	return nil
 }
@@ -135,14 +142,27 @@ const (
 	update set seen = now()
 	returning id`
 
-	sqlSearchTorrents = `select t.*
+	sqlUpdateFTSVectors = `update torrents
+	set tsv = sub.tsv from (
+		select t.id,
+		setweight(to_tsvector(translate(t.name, '._-', ' ')), 'A') ||
+		setweight(to_tsvector(translate(string_agg(coalesce(f.path, ''), ' '), './_-', ' ')), 'B') as tsv
+		from torrents t
+		left join files f on t.id = f.torrent_id
+		where t.id = $1
+		group by t.id
+	) as sub
+	where sub.id = torrents.id`
+
+	sqlSearchTorrents = `
+	select t.id, t.infohash, t.name, t.size, t.seen
 	from torrents t
-	inner join files f on t.id = f.torrent_id
-	where t.name ilike $1 or f.path ilike $1 group by t.id
-	order by seen desc
+	where t.tsv @@ plainto_tsquery($1)
+	order by ts_rank(tsv, plainto_tsquery($1)) desc, t.seen desc
 	limit 50`
 
-	sqlTorrentsByTag = `select t.*
+	sqlTorrentsByTag = `
+	select t.id, t.infohash, t.name, t.size, t.seen
 	from torrents t
 	inner join tags_torrents tt on t.id = tt.torrent_id
 	inner join tags ta on tt.tag_id = ta.id
