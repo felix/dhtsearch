@@ -32,15 +32,16 @@ type advancedConfig struct {
 
 func loadConfig() {
 	if _, err := os.Stat("config.toml"); !os.IsNotExist(err) {
-		md, err := toml.DecodeFile("config.toml", &Config)
+		_, err := toml.DecodeFile("config.toml", &Config)
 		if err != nil {
 			fmt.Printf("Failed to read configuration: %q\n", err)
 			os.Exit(1)
 		}
+	}
 
-		if !md.IsDefined("SkipTags") {
-			Config.SkipTags = []string{"adult"}
-		}
+	// Leave it to the user to get around this
+	if len(Config.SkipTags) == 0 {
+		Config.SkipTags = []string{"adult"}
 	}
 
 	flag.IntVar(&Config.BasePort, "base-port", 6881, "listen port (and first of multiple ports)")
