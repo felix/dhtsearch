@@ -112,25 +112,33 @@ func main() {
 	var p peer
 	var t Torrent
 
+	// Filter peers
+	go func() {
+		for {
+			select {
+			case p = <-peers:
+				if ok := cache[p.id]; ok {
+					peersSkipped.Add(1)
+					continue
+				}
+				peersAnnounced.Add(1)
+				if len(cache) > Config.Advanced.PeerCacheSize {
+					fmt.Printf("Flushing peer cache\n")
+					cache = make(map[string]bool)
+				}
+				cache[p.id] = true
+				if torrentExists(p.id) {
+					peersSkipped.Add(1)
+					continue
+				}
+				filteredPeers <- p
+				dhtCachedPeers.Set(int64(len(cache)))
+			}
+		}
+	}()
+
 	for {
 		select {
-		case p = <-peers:
-			if ok := cache[p.id]; ok {
-				peersSkipped.Add(1)
-				continue
-			}
-			peersAnnounced.Add(1)
-			if len(cache) > 2000 {
-				fmt.Printf("Flushing cache\n")
-				cache = make(map[string]bool)
-			}
-			cache[p.id] = true
-			if torrentExists(p.id) {
-				peersSkipped.Add(1)
-				continue
-			}
-			filteredPeers <- p
-
 		case t = <-torrents:
 			length := t.Size
 
