@@ -1,0 +1,16 @@
+# Move to config.toml in the same directory as the binary.
+# All command line arguments are accepted plus some more.
+
+# The following are the defaults:
+
+base-port = 6881
+num-nodes = 1
+debug = false
+quiet = false
+dsn = "postgres://dht:dht@localhost/dht?sslmode=disable"
+no-http = false
+http-address = "localhost:6880"
+skip-tags = ["adult"]
+
+[tags]
+test = "\\.asdfasdfsdfsfdsfs"

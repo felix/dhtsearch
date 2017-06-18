@@ -15,11 +15,22 @@ those where another node announces they have a torrent available.
 This BitTorrent client only downloads the torrent metadata. The actual files
 hosted by the remote nodes are not retrieved.
 
-## Tagging
+## Features
 
-As torrent metadata is fetched the torrent is tagged using a set of regular
-expressions matched against the torrent name and the files in the torrent. By
-default all files tagged 'adult' are not indexed.
+- **Tagging** of torrents metadata is fetched. The torrent is tagged using a
+  set of regular expressions matched against the torrent name and the files in
+  the torrent.
+
+- **Filtering** can be done by tags. By default all torrents tagged 'adult' are
+  not indexed. See the SkipTags option in the configuration file.
+
+- **Full Text Search** using PostgreSQL's text search vectors. Torrent names
+  are weighted more than file names.
+
+- **Statistics** for the crawler process are available when the HTTP server is
+  enabled. Fetch the JSON from the `/status` endpoint.
+
+- **Custom tags** can be defined in the configuration file.
 
 ## Installation
 
@@ -37,21 +48,42 @@ You will need to create a PostgreSQL database using the `schema.sql` file
 provided. You are going to need to sort out any port forwarding if you are
 behind NAT so remote nodes can get to yours.
 
-The following options are available:
+Configuration is done via a [TOML](https://github.com/toml-lang/toml) formatted
+file or via flags passed to the daemon.
 
-    Usage of ./dht-search:
+The following command line flags are available:
+
+      -base-port int
+            listen port (and first of multiple ports) (default 6881)
       -debug
             provide debug output
       -dsn string
-            DB DSN (default "postgres://dht:dht@localhost/dht?sslmode=disable")
-      -http string
+            Database DSN (default "postgres://dht:dht@localhost/dht?sslmode=disable")
+      -http-address string
             HTTP listen address:port (default "localhost:6880")
       -no-http
             no HTTP service
-      -nodes int
+      -num-nodes int
             number of nodes to start (default 1)
-      -port int
-            listen port (and first of multiple ports) (default 6881)
+      -quiet
+            log only errors
+
+and the following "advanced" options:
+
+      -max-bt-workers int
+            max number of BT workers (default 256)
+      -max-dht-workers int
+            max number of DHT workers (default 256)
+      -peer-cache-size int
+            memory cache of seen peers (default 200)
+      -routing-table-size int
+            number of remote nodes in routing table (default 1000)
+      -slab-allocations int
+            number of memory blocks to allocate for DHT client (default 10)
+      -tcp-timeout int
+            TCP timeout in seconds (default 10)
+      -udp-timeout int
+            UDP timeout in seconds (default 10)
 
 These options enable you to start a number of DHT nodes thus implementing a
 small scale [Sybil attack](https://en.wikipedia.org/wiki/Sybil_attack). The
@@ -60,11 +92,8 @@ following nodes.
 
 ## TODO
 
-- Manage downloading threads to reduce memory consumption.
 - Add tests!
 - Enable rate limiting.
-- Enable configuration of tags and reject patterns.
-- Enable FTS on database queries.
 - Improve our manners on the DHT network (replies etc.).
 - Improve the routing table implementation.
 - Improve tagging by checking the torrent name against Unicode sections.
