@@ -159,7 +159,7 @@ const (
 	from torrents t
 	where t.tsv @@ plainto_tsquery($1)
 	order by ts_rank(tsv, plainto_tsquery($1)) desc, t.seen desc
-	limit 50`
+	limit 100`
 
 	sqlTorrentsByTag = `
 	select t.id, t.infohash, t.name, t.size, t.seen
@@ -168,7 +168,7 @@ const (
 	inner join tags ta on tt.tag_id = ta.id
 	where ta.name = $1 group by t.id
 	order by seen desc
-	limit 50`
+	limit 100`
 
 	sqlSelectFiles = `select * from files
 	where torrent_id = $1
