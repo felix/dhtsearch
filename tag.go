@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"regexp"
 )
 
+// Default tags, can be supplimented or overwritten by config
 var tags = map[string]string{
 	"flac":        `\.flac$`,
 	"episode":     "(season|episode|s[0-9]{2}e[0-9]{2})",
@@ -11,7 +13,7 @@ var tags = map[string]string{
 	"720":         "720",
 	"hd":          "hd|720|1080",
 	"bdrip":       "bdrip",
-	"adult":       `(xxx|f.ck|p(orn|ussy)|censor|sex|urbat|a(ss|nal)\s|(di|co)ck|esbian|milf|lust|gay)|erotic|18(\+|yr)`,
+	"adult":       `(xxx|p(orn|ussy)|censor|sex|urbat|a(ss|nal)|o(rgy|gasm)|(fu|di|co)ck|esbian|milf|lust|gay)|rotic|18(\+|yr)`,
 	"dvdrip":      "dvdrip",
 	"ebook":       "epub",
 	"application": `\.(apk|exe|msi|dmg)$`,
@@ -33,6 +35,32 @@ func initTagRegexps() {
 	for tag, re := range tags {
 		tagREs[tag] = regexp.MustCompile("(?i)" + re)
 	}
+	// Merge user tags
+	for tag, re := range Config.Tags {
+		if !Config.Quiet {
+			fmt.Printf("Adding user tag: %s = %s\n", tag, re)
+		}
+		tagREs[tag] = regexp.MustCompile("(?i)" + re)
+	}
+}
+
+func createTag(tag string) (tagId int, err error) {
+	err = DB.QueryRow(sqlSelectTag, tag).Scan(&tagId)
+	if err == nil {
+		if Config.Debug {
+			fmt.Printf("Found existing tag %s\n", tag)
+		}
+	} else {
+		err = DB.QueryRow(sqlInsertTag, tag).Scan(&tagId)
+		if err != nil {
+			fmt.Println(err)
+			return -1, err
+		}
+		if Config.Debug {
+			fmt.Printf("Created new tag %s\n", tag)
+		}
+	}
+	return tagId, nil
 }
 
 func tagTorrent(t *Torrent) {
@@ -53,3 +81,17 @@ func tagTorrent(t *Torrent) {
 		t.Tags = append(t.Tags, tt)
 	}
 }
+
+func hasTag(t Torrent, tag string) bool {
+	for _, t := range t.Tags {
+		if tag == t {
+			return true
+		}
+	}
+	return false
+}
+
+const (
+	sqlSelectTag = `select id from tags where name = $1`
+	sqlInsertTag = `insert into tags (name) values ($1) returning id`
+)

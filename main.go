@@ -2,7 +2,6 @@ package main
 
 import (
 	"expvar"
-	"flag"
 	"fmt"
 	"time"
 	//"github.com/pkg/profile"
@@ -13,22 +12,27 @@ import (
 
 // Exported vars
 var (
-	dhtPacketsIn    = expvar.NewInt("dht_packets_in")
-	dhtPacketsOut   = expvar.NewInt("dht_packets_out")
-	dhtErrorPackets = expvar.NewInt("dht_error_packets")
-	dhtBytesIn      = expvar.NewInt("dht_bytes_in")
-	dhtBytesOut     = expvar.NewInt("dht_bytes_out")
-	btBytesIn       = expvar.NewInt("bt_bytes_in")
-	btBytesOut      = expvar.NewInt("bt_bytes_out")
-	peersAnnounced  = expvar.NewInt("peers_announced")
-	peersSkipped    = expvar.NewInt("peers_skipped")
-	torrentsSkipped = expvar.NewInt("torrents_skipped")
-	torrentsSaved   = expvar.NewInt("torrents_saved")
-	torrentsTotal   = expvar.NewInt("torrents_total")
-	start           = time.Now()
+	dhtPacketsIn      = expvar.NewInt("dht_packets_in")
+	dhtPacketsOut     = expvar.NewInt("dht_packets_out")
+	dhtPacketsDropped = expvar.NewInt("dht_packets_dropped")
+	dhtErrorPackets   = expvar.NewInt("dht_error_packets")
+	dhtCachedPeers    = expvar.NewInt("dht_cached_peers")
+	dhtBytesIn        = expvar.NewInt("dht_bytes_in")
+	dhtBytesOut       = expvar.NewInt("dht_bytes_out")
+	dhtWorkers        = expvar.NewInt("dht_workers")
+	btBytesIn         = expvar.NewInt("bt_bytes_in")
+	btBytesOut        = expvar.NewInt("bt_bytes_out")
+	btWorkers         = expvar.NewInt("bt_workers")
+	peersAnnounced    = expvar.NewInt("peers_announced")
+	peersSkipped      = expvar.NewInt("peers_skipped")
+	torrentsSkipped   = expvar.NewInt("torrents_skipped")
+	torrentsSaved     = expvar.NewInt("torrents_saved")
+	torrentsTotal     = expvar.NewInt("torrents_total")
+	start             = time.Now()
 )
 
 // Global
+var Config config
 var DB *database
 
 func uptime() interface{} {
@@ -39,21 +43,7 @@ func main() {
 	//defer profile.Start(profile.CPUProfile).Stop()
 	expvar.Publish("uptime", expvar.Func(uptime))
 
-	var basePort, numNodes int
-	var debug bool
-	var quiet bool
-	var noHttp bool
-	var dsn, httpAddress string
-	flag.IntVar(&basePort, "port", 6881, "listen port (and first of multiple ports)")
-	flag.IntVar(&numNodes, "nodes", 1, "number of nodes to start")
-	flag.BoolVar(&debug, "debug", false, "provide debug output")
-	flag.BoolVar(&quiet, "quiet", false, "log only errors")
-	flag.StringVar(&dsn, "dsn", "postgres://dht:dht@localhost/dht?sslmode=disable", "DB DSN")
-	flag.BoolVar(&noHttp, "no-http", false, "no HTTP service")
-	flag.StringVar(&httpAddress, "http", "localhost:6880", "HTTP listen address:port")
-	flag.Parse()
-
-	initTagRegexps()
+	loadConfig()
 
 	// Slice of channels for DHT node output
 	torrents := make(chan Torrent)
@@ -63,18 +53,12 @@ func main() {
 	done := make(chan struct{})
 	defer close(done)
 
-	// Start DHTnodes
-	if debug {
-		fmt.Printf("Starting %d instance(s)\n", numNodes)
-	}
-
 	// Persistence
 	var err error
-	DB, err = newDB(dsn)
+	DB, err = newDB(Config.Dsn)
 	if err != nil {
 		os.Exit(1)
 	}
-	DB.debug = debug
 	defer DB.Close()
 
 	// Initialise tags
@@ -86,11 +70,13 @@ func main() {
 	}
 
 	// Create DHT nodes
-	for i := 0; i < numNodes; i++ {
+	if Config.Debug {
+		fmt.Printf("Starting %d instance(s)\n", Config.NumNodes)
+	}
+	for i := 0; i < Config.NumNodes; i++ {
 		// Consecutive port numbers
-		port := basePort + i
+		port := Config.BasePort + i
 		dht := newDHTNode("", port, peers)
-		dht.debug = debug
 		err = dht.run(done)
 		if err != nil {
 			os.Exit(1)
@@ -102,21 +88,20 @@ func main() {
 
 	// Create BT node
 	btClient := newBTClient(filteredPeers, torrents)
-	btClient.debug = debug
 	err = btClient.run(done)
 	if err != nil {
 		os.Exit(1)
 	}
 
 	// HTTP Server
-	if !noHttp {
+	if !Config.NoHttp {
 		http.HandleFunc("/", indexHandler)
 		http.HandleFunc("/stats", statsHandler)
 		http.HandleFunc("/search", searchHandler)
-		sock, _ := net.Listen("tcp", httpAddress)
+		sock, _ := net.Listen("tcp", Config.HttpAddress)
 		go func() {
-			if !quiet {
-				fmt.Printf("HTTP now available at %s\n", httpAddress)
+			if !Config.Quiet {
+				fmt.Printf("HTTP now available at %s\n", Config.HttpAddress)
 			}
 			http.Serve(sock, nil)
 		}()
@@ -152,13 +137,15 @@ func main() {
 			// Add tags
 			tagTorrent(&t)
 
+			// Not sure if I like continue labels, so this
 			var notWanted = false
-			for _, tag := range t.Tags {
-				if tag == "adult" {
-					if !quiet {
+			for _, tag := range Config.SkipTags {
+				if hasTag(t, tag) {
+					if !Config.Quiet {
 						fmt.Printf("Skipping torrent: %q\n", t.Name)
 					}
 					notWanted = true
+					break
 				}
 			}
 			if notWanted {
@@ -171,7 +158,7 @@ func main() {
 				fmt.Printf("Error saving torrent: %q\n", err)
 				continue
 			}
-			if !quiet {
+			if !Config.Quiet {
 				fmt.Printf("Torrrent added, length: %d, name: %q, tags: %s, url: magnet:?xt=urn:btih:%s\n", length, t.Name, t.Tags, t.InfoHash)
 			}
 			torrentsSaved.Add(1)

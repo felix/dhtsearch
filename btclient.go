@@ -48,7 +48,6 @@ type peer struct {
 }
 
 type btClient struct {
-	debug        bool
 	peersIn      <-chan peer
 	torrentsOut  chan<- Torrent
 	workerTokens chan struct{}
@@ -58,7 +57,7 @@ func newBTClient(r <-chan peer, t chan<- Torrent) *btClient {
 	return &btClient{
 		peersIn:      r,
 		torrentsOut:  t,
-		workerTokens: make(chan struct{}, 256),
+		workerTokens: make(chan struct{}, Config.Advanced.MaxBtWorkers),
 	}
 }
 
@@ -71,9 +70,11 @@ func (bt *btClient) run(done <-chan struct{}) error {
 				return
 			case p = <-bt.peersIn:
 				bt.workerTokens <- struct{}{}
+				btWorkers.Add(1)
 
 				go func(p peer) {
 					defer func() {
+						btWorkers.Add(-1)
 						<-bt.workerTokens
 					}()
 
@@ -81,7 +82,7 @@ func (bt *btClient) run(done <-chan struct{}) error {
 						return
 					}
 
-					if bt.debug {
+					if Config.Debug {
 						fmt.Printf("Fetching metadata for %x\n", p.id)
 					}
 					bt.fetchMetadata(p)
@@ -104,7 +105,7 @@ func (bt *btClient) isDone(pieces [][]byte) bool {
 
 // read reads size-length bytes from conn to data.
 func read(conn *net.TCPConn, size int, data *bytes.Buffer) error {
-	conn.SetReadDeadline(time.Now().Add(time.Second * 15))
+	conn.SetReadDeadline(time.Now().Add(time.Second * time.Duration(Config.Advanced.TcpTimeout)))
 
 	n, err := io.CopyN(data, conn, int64(size))
 	if err != nil || n != int64(size) {
@@ -142,7 +143,7 @@ func sendMessage(conn *net.TCPConn, data []byte) error {
 	buffer := bytes.NewBuffer(nil)
 	binary.Write(buffer, binary.BigEndian, length)
 
-	conn.SetWriteDeadline(time.Now().Add(time.Second * 10))
+	conn.SetWriteDeadline(time.Now().Add(time.Second * time.Duration(Config.Advanced.TcpTimeout)))
 	b, err := conn.Write(append(buffer.Bytes(), data...))
 	btBytesOut.Add(int64(b))
 	return err
@@ -155,7 +156,7 @@ func sendHandshake(conn *net.TCPConn, infoHash, peerID []byte) error {
 	copy(data[28:48], infoHash)
 	copy(data[48:], peerID)
 
-	conn.SetWriteDeadline(time.Now().Add(time.Second * 10))
+	conn.SetWriteDeadline(time.Now().Add(time.Second * time.Duration(Config.Advanced.TcpTimeout)))
 	b, err := conn.Write(data)
 	btBytesOut.Add(int64(b))
 	return err

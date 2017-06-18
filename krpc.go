@@ -42,16 +42,19 @@ func makeResponse(t string, r map[string]interface{}) map[string]interface{} {
 
 // Parse a KRPC packet into a message
 func (d *DHTNode) processPacket(p packet) {
-	if len(d.workerTokens) >= 256 {
+	// Check max rather than blocking
+	if len(d.workerTokens) >= Config.Advanced.MaxDhtWorkers {
+		dhtPacketsDropped.Add(1)
 		return
 	}
 
 	d.workerTokens <- struct{}{}
 
 	go func() {
+		dhtWorkers.Add(1)
 		defer func() {
-			// Flush channel
 			<-d.workerTokens
+			dhtWorkers.Add(-1)
 		}()
 
 		data, err := Decode(p.b)
@@ -202,7 +205,7 @@ func handleRequest(d *DHTNode, addr *net.UDPAddr, m map[string]interface{}) (suc
 		}
 		rn = newRemoteNode(*addr, id)
 		ih := a["info_hash"].(string)
-		if d.debug {
+		if Config.Debug {
 			fmt.Printf("get_peers from %s for %x\n", rn.String(), ih)
 		}
 
@@ -230,7 +233,7 @@ func handleRequest(d *DHTNode, addr *net.UDPAddr, m map[string]interface{}) (suc
 
 		ih := a["info_hash"].(string)
 		rn = newRemoteNode(*addr, ih)
-		if d.debug {
+		if Config.Debug {
 			fmt.Printf("announce_peer from %s for %x\n", rn.String(), ih)
 		}
 
@@ -280,7 +283,7 @@ func handleResponse(d *DHTNode, addr *net.UDPAddr, m map[string]interface{}) (su
 		values := r["values"].([]interface{})
 		for _, v := range values {
 			addr := compactNodeInfoToString(v.(string))
-			if d.debug {
+			if Config.Debug {
 				fmt.Printf("Unhandled get_peer request %s\n", addr)
 			}
 			// TODO new peer
@@ -301,7 +304,7 @@ func handleError(d *DHTNode, addr *net.UDPAddr, m map[string]interface{}) (succe
 	if e := m["e"].([]interface{}); len(e) != 2 {
 		return
 	}
-	if d.debug {
+	if Config.Debug {
 		fmt.Printf("Error packet from %s:%d\n", addr.IP.String(), addr.Port)
 	}
 

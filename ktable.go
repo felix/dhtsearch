@@ -4,8 +4,6 @@ import (
 	"sync"
 )
 
-const kTableLimit = 1000
-
 // Keep it simple for now
 type kTable struct {
 	sync.Mutex
@@ -40,7 +38,7 @@ func (k *kTable) isEmpty() bool {
 func (k *kTable) isFull() bool {
 	k.Lock()
 	defer k.Unlock()
-	return len(k.nodes) >= kTableLimit
+	return len(k.nodes) >= Config.Advanced.RoutingTableSize
 }
 
 // For now

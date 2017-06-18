@@ -17,7 +17,6 @@ var (
 
 type DHTNode struct {
 	id           string
-	debug        bool
 	address      string
 	port         int
 	conn         *net.UDPConn
@@ -39,7 +38,7 @@ func newDHTNode(address string, port int, p chan<- peer) (node *DHTNode) {
 	node = &DHTNode{
 		address:      address,
 		port:         port,
-		workerTokens: make(chan struct{}, 256),
+		workerTokens: make(chan struct{}, Config.Advanced.MaxDhtWorkers),
 		peerChan:     p,
 	}
 
@@ -58,7 +57,7 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 	d.conn = listener.(*net.UDPConn)
 	d.port = d.conn.LocalAddr().(*net.UDPAddr).Port
 
-	if d.debug {
+	if Config.Debug {
 		fmt.Printf("We are node %x\n", d.id)
 		fmt.Printf("Listening at %s:%d\n", d.address, d.port)
 	}
@@ -69,7 +68,7 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 
 	// Create a slab for allocation
 	// Adjust number to suit contention
-	byteSlab := newSlab(8192, 10)
+	byteSlab := newSlab(8192, Config.Advanced.SlabAllocations)
 
 	// Start reading packets from conn into channel
 	go func() {
@@ -95,12 +94,12 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 		for {
 			select {
 			case p = <-d.packetsOut:
-				d.conn.SetWriteDeadline(time.Now().Add(time.Second * 10))
+				d.conn.SetWriteDeadline(time.Now().Add(time.Second * time.Duration(Config.Advanced.UdpTimeout)))
 				b, err := d.conn.WriteToUDP(p.b, &p.raddr)
 				if err != nil {
 					dhtErrorPackets.Add(1)
 					// TODO remove from kTAble
-					if d.debug {
+					if Config.Debug {
 						fmt.Printf("Error writing packet %s\n", err)
 					}
 				} else {
@@ -126,7 +125,9 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 			case p = <-d.packetsIn:
 				d.processPacket(p)
 			case <-ticker:
-				go d.makeNeighbours()
+				if btWorkers.Value() < 2 {
+					go d.makeNeighbours()
+				}
 			}
 		}
 	}()
@@ -134,7 +135,7 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 }
 
 func (d *DHTNode) bootstrap() {
-	if d.debug {
+	if Config.Debug {
 		fmt.Println("Bootstrapping")
 	}
 	for _, s := range routers {
@@ -151,13 +152,10 @@ func (d *DHTNode) bootstrap() {
 func (d *DHTNode) makeNeighbours() {
 	// TODO configurable
 	if !d.kTable.isFull() {
-		if d.debug {
+		if Config.Debug {
 			fmt.Println("Making neighbours")
 		}
 		if d.kTable.isEmpty() {
-			// Get a new id
-			d.id = genInfoHash()
-			d.kTable.id = d.id
 			d.bootstrap()
 		} else {
 			for _, rn := range d.kTable.getNodes() {
@@ -221,7 +219,7 @@ func (d *DHTNode) processFindNodeResults(rn *remoteNode, nodeList string) {
 		//fmt.Printf("find_node response id len:%d address:%s\n", len(id), addr)
 
 		if d.id == id {
-			if d.debug {
+			if Config.Debug {
 				fmt.Println("find_nodes ignoring self")
 			}
 			continue

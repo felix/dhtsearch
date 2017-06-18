@@ -2,9 +2,15 @@
 
 
 [[projects]]
+  name = "github.com/BurntSushi/toml"
+  packages = ["."]
+  revision = "b26d9c308763d68093482582cea63d69be07a0f0"
+  version = "v0.3.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/jackc/pgx"
-  packages = ["."]
+  packages = [".","stdlib"]
   revision = "cd16be9308d0886a1fe2b5e1bb5e0bc935cd9217"
 
 [[projects]]
@@ -16,6 +22,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "bd509bac46bff51ea8b408084d6725a34aaa7ab64d15e8b09c1a2a4d7d2176b1"
+  inputs-digest = "a56aa1a35b875cde735eb42ce9269dd35edfb1aacd98185db84084b8df5fe2ea"
   solver-name = "gps-cdcl"
   solver-version = 1

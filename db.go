@@ -8,7 +8,6 @@ import (
 
 type database struct {
 	*sqlx.DB
-	debug bool
 }
 
 func newDB(dsn string) (*database, error) {
@@ -23,28 +22,5 @@ func newDB(dsn string) (*database, error) {
 		return nil, err
 	}
 	torrentsTotal.Set(int64(count))
-	return &database{d, false}, nil
-}
-
-func createTag(tag string) (tagId int, err error) {
-	if DB.debug {
-		fmt.Printf("Writing tag %s\n", tag)
-	}
-
-	err = DB.QueryRow("select id from tags where name = $1", tag).Scan(&tagId)
-	if err == nil {
-		if DB.debug {
-			fmt.Printf("Found existing tag %s\n", tag)
-		}
-	} else {
-		err = DB.QueryRow("insert into tags (name) values ($1) returning id", tag).Scan(&tagId)
-		if err != nil {
-			fmt.Println(err)
-			return -1, err
-		}
-		if DB.debug {
-			fmt.Printf("Created new tag %s\n", tag)
-		}
-	}
-	return tagId, nil
+	return &database{d}, nil
 }
