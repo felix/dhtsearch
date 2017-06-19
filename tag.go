@@ -43,7 +43,8 @@ func initTagRegexps() {
 			continue
 		}
 		className := strings.ToLower(cc)
-		tagREs[className] = regexp.MustCompile(fmt.Sprintf(`(?i)\p{%s}`, cc))
+		// Test for 3 or more characters per character class
+		tagREs[className] = regexp.MustCompile(fmt.Sprintf(`(?i)\p{%s}{3,}`, cc))
 	}
 	// Merge user tags
 	for tag, re := range Config.Tags {

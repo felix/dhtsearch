@@ -233,7 +233,7 @@ var search = function (term, page) {
 			].join('')
 		}).join('')
 		var post = [
-		'</ul><p>'
+		'</ul><p>',
 		(data.page > 1) ? '<a class="pager prev" href="#">Previous</a>&nbsp;' : '',
 		(data.torrents.length === data.page_size) ? '<a class="pager next" href="#">Next</a>' : '',
 		'</p>'].join('')
