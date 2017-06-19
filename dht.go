@@ -57,13 +57,13 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 	d.conn = listener.(*net.UDPConn)
 	d.port = d.conn.LocalAddr().(*net.UDPAddr).Port
 
-	if Config.Debug {
-		fmt.Printf("We are node %x\n", d.id)
-		fmt.Printf("Listening at %s:%d\n", d.address, d.port)
+	if !Config.Quiet {
+		fmt.Printf("DHT node listening at %s:%d\n", d.address, d.port)
 	}
 
 	// Packets off the network
 	d.packetsIn = make(chan packet)
+	// Packets onto the network
 	d.packetsOut = make(chan packet)
 
 	// Create a slab for allocation
@@ -78,16 +78,15 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 				fmt.Println("UDP read error", err)
 				continue
 			}
+			// Chop and send
+			d.packetsIn <- packet{b[0:c], *addr}
+			byteSlab.Free(b)
 			dhtBytesIn.Add(int64(c))
 			dhtPacketsIn.Add(1)
-			// Chop
-			b = b[0:c]
-			d.packetsIn <- packet{b, *addr}
-			byteSlab.Free(b)
 		}
 	}()
 
-	// Start writing packets from channel to conn
+	// Start writing packets from channel to DHT
 	go func() {
 		var p packet
 		for {
@@ -97,7 +96,7 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 				b, err := d.conn.WriteToUDP(p.b, &p.raddr)
 				if err != nil {
 					dhtErrorPackets.Add(1)
-					// TODO remove from kTAble
+					// TODO remove from kTable or add to blacklist?
 					if Config.Debug {
 						fmt.Printf("Error writing packet %s\n", err)
 					}
@@ -206,7 +205,6 @@ func (d *DHTNode) processFindNodeResults(rn *remoteNode, nodeList string) {
 	}
 
 	// We got a byte array in groups of 26 or 38
-	var count int = 0
 	for i := 0; i < len(nodeList); i += nodeLength {
 		id := nodeList[i : i+ihLength]
 		addr := compactNodeInfoToString(nodeList[i+ihLength : i+nodeLength])
@@ -235,7 +233,5 @@ func (d *DHTNode) processFindNodeResults(rn *remoteNode, nodeList string) {
 		}
 		rn := newRemoteNode(*address, id)
 		d.kTable.add(rn)
-		count = count + 1
-		// TODO check size of kTable
 	}
 }

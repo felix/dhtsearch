@@ -45,7 +45,7 @@ func loadConfig() {
 		NoHttp:      false,
 		HttpAddress: "localhost:6880",
 		Advanced: advancedConfig{
-			RoutingTableSize: 1000,
+			RoutingTableSize: 4000,
 			MaxBtWorkers:     256,
 			MaxDhtWorkers:    256,
 			PeerCacheSize:    200,
