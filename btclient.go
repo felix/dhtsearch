@@ -111,18 +111,15 @@ func read(conn *net.TCPConn, size int, data *bytes.Buffer) error {
 	if err != nil || n != int64(size) {
 		return errors.New("read error")
 	}
-	btBytesIn.Add(int64(size))
+	btBytesIn.Add(n)
 	return nil
 }
 
 // readMessage gets a message from the tcp connection.
-func readMessage(conn *net.TCPConn, data *bytes.Buffer) (
-	length int, err error) {
-
+func readMessage(conn *net.TCPConn, data *bytes.Buffer) (length int, err error) {
 	if err = read(conn, 4, data); err != nil {
 		return
 	}
-	btBytesIn.Add(4)
 
 	length = int(bytes2int(data.Next(4)))
 	if length == 0 {
@@ -132,7 +129,6 @@ func readMessage(conn *net.TCPConn, data *bytes.Buffer) (
 	if err = read(conn, length, data); err != nil {
 		return
 	}
-	btBytesIn.Add(int64(length))
 	return
 }
 
@@ -267,13 +263,13 @@ func (bt *btClient) fetchMetadata(p peer) {
 	data := bytes.NewBuffer(nil)
 	data.Grow(BLOCK)
 
+	// TCP handshake
 	if sendHandshake(conn, []byte(infoHash), []byte(genInfoHash())) != nil ||
 		read(conn, 68, data) != nil ||
 		onHandshake(data.Next(68)) != nil ||
 		sendExtHandshake(conn) != nil {
 		return
 	}
-	btBytesIn.Add(68)
 
 	for {
 		length, err = readMessage(conn, data)

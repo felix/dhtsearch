@@ -31,10 +31,6 @@ var (
 	start             = time.Now()
 )
 
-// Global
-var Config config
-var DB *database
-
 func uptime() interface{} {
 	return int64(time.Since(start).Seconds())
 }

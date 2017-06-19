@@ -10,6 +10,9 @@ type database struct {
 	*sqlx.DB
 }
 
+// Global
+var DB *database
+
 func newDB(dsn string) (*database, error) {
 	d, err := sqlx.Connect("pgx", dsn)
 	if err != nil {

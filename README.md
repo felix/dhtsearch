@@ -78,8 +78,6 @@ and the following "advanced" options:
             memory cache of seen peers (default 200)
       -routing-table-size int
             number of remote nodes in routing table (default 1000)
-      -slab-allocations int
-            number of memory blocks to allocate for DHT client (default 10)
       -tcp-timeout int
             TCP timeout in seconds (default 10)
       -udp-timeout int
@@ -92,9 +90,8 @@ following nodes.
 
 ## TODO
 
-- Add tests!
 - Enable rate limiting.
 - Improve our manners on the DHT network (replies etc.).
 - Improve the routing table implementation.
-- Improve tagging by checking the torrent name against Unicode sections.
 - Add results pagination.
+- Add tests!

@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"regexp"
+	"strings"
+	"unicode"
 )
 
 // Default tags, can be supplimented or overwritten by config
@@ -34,6 +36,14 @@ func initTagRegexps() {
 	tagREs = make(map[string]*regexp.Regexp)
 	for tag, re := range tags {
 		tagREs[tag] = regexp.MustCompile("(?i)" + re)
+	}
+	// Add character classes
+	for cc, _ := range unicode.Scripts {
+		if cc == "Latin" || cc == "Common" {
+			continue
+		}
+		className := strings.ToLower(cc)
+		tagREs[className] = regexp.MustCompile(fmt.Sprintf(`(?i)\p{%s}`, cc))
 	}
 	// Merge user tags
 	for tag, re := range Config.Tags {

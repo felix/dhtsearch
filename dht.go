@@ -67,8 +67,7 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 	d.packetsOut = make(chan packet)
 
 	// Create a slab for allocation
-	// Adjust number to suit contention
-	byteSlab := newSlab(8192, Config.Advanced.SlabAllocations)
+	byteSlab := newSlab(8192, Config.NumNodes)
 
 	// Start reading packets from conn into channel
 	go func() {
@@ -125,7 +124,7 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 			case p = <-d.packetsIn:
 				d.processPacket(p)
 			case <-ticker:
-				if btWorkers.Value() < 2 {
+				if btWorkers.Value() == 0 {
 					go d.makeNeighbours()
 				}
 			}
@@ -150,19 +149,16 @@ func (d *DHTNode) bootstrap() {
 }
 
 func (d *DHTNode) makeNeighbours() {
-	// TODO configurable
-	if !d.kTable.isFull() {
-		if Config.Debug {
-			fmt.Println("Making neighbours")
+	if Config.Debug {
+		fmt.Println("Making neighbours")
+	}
+	if d.kTable.isEmpty() {
+		d.bootstrap()
+	} else {
+		for _, rn := range d.kTable.getNodes() {
+			d.findNode(rn, rn.id)
 		}
-		if d.kTable.isEmpty() {
-			d.bootstrap()
-		} else {
-			for _, rn := range d.kTable.getNodes() {
-				d.findNode(rn, rn.id)
-			}
-			d.kTable.refresh()
-		}
+		d.kTable.refresh()
 	}
 }
 
