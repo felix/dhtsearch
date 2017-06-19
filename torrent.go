@@ -100,9 +100,9 @@ func (t *Torrent) load() (err error) {
 	return
 }
 
-func torrentsByName(query string) ([]Torrent, error) {
+func torrentsByName(query string, offset int) ([]Torrent, error) {
 	torrents := []Torrent{}
-	err := DB.Select(&torrents, sqlSearchTorrents, fmt.Sprintf("%%%s%%", query))
+	err := DB.Select(&torrents, sqlSearchTorrents, fmt.Sprintf("%%%s%%", query), offset)
 	if err != nil {
 		return nil, err
 	}
@@ -114,9 +114,9 @@ func torrentsByName(query string) ([]Torrent, error) {
 	return torrents, nil
 }
 
-func torrentsByTag(tag string) ([]Torrent, error) {
+func torrentsByTag(tag string, offset int) ([]Torrent, error) {
 	torrents := []Torrent{}
-	err := DB.Select(&torrents, sqlTorrentsByTag, tag)
+	err := DB.Select(&torrents, sqlTorrentsByTag, tag, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ const (
 	from torrents t
 	where t.tsv @@ plainto_tsquery($1)
 	order by ts_rank(tsv, plainto_tsquery($1)) desc, t.seen desc
-	limit 100`
+	limit 50 offset $2`
 
 	sqlTorrentsByTag = `
 	select t.id, t.infohash, t.name, t.size, t.seen
@@ -168,7 +168,7 @@ const (
 	inner join tags ta on tt.tag_id = ta.id
 	where ta.name = $1 group by t.id
 	order by seen desc
-	limit 100`
+	limit 50 offset $2`
 
 	sqlSelectFiles = `select * from files
 	where torrent_id = $1

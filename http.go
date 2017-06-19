@@ -5,7 +5,14 @@ import (
 	"expvar"
 	"fmt"
 	"net/http"
+	"strconv"
 )
+
+type results struct {
+	Page     int       `json:"page"`
+	PageSize int       `json:"page_size"`
+	Torrents []Torrent `json:"torrents"`
+}
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public")
@@ -40,27 +47,40 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
+
+	offset := 0
+	page := 1
+	var err error
+	pStr := r.URL.Query().Get("page")
+	if pStr != "" {
+		page, err = strconv.Atoi(pStr)
+		if err != nil {
+			fmt.Printf("Failed to parse page: %q\n", err)
+		}
+		offset = (page - 1) * 50
+	}
+
 	if q := r.URL.Query().Get("q"); q != "" {
-		torrents, err := torrentsByName(q)
+		torrents, err := torrentsByName(q, offset)
 		if err != nil {
 			w.WriteHeader(500)
 			fmt.Printf("Error: %q\n", err)
 			return
 		}
 		w.WriteHeader(200)
-		json.NewEncoder(w).Encode(torrents)
+		json.NewEncoder(w).Encode(results{Page: page, PageSize: Config.Advanced.ResultsPageSize, Torrents: torrents})
 		return
 	}
 
 	if tag := r.URL.Query().Get("tag"); tag != "" {
-		torrents, err := torrentsByTag(tag)
+		torrents, err := torrentsByTag(tag, offset)
 		if err != nil {
 			w.WriteHeader(500)
 			fmt.Printf("Error: %q\n", err)
 			return
 		}
 		w.WriteHeader(200)
-		json.NewEncoder(w).Encode(torrents)
+		json.NewEncoder(w).Encode(results{Page: page, PageSize: Config.Advanced.ResultsPageSize, Torrents: torrents})
 		return
 	}
 
@@ -82,13 +102,13 @@ var html = []byte(`
 		a { color:#000;text-decoration:none; }
 		.header { padding:1em;border-bottom:1px solid #555;background-color:#eee; }
 		.search { display:flex;float:left;margin:0;padding:0; }
-		.search__input { font-size:1.25em;padding:2px; }
+		.search__input { min-width:0;font-size:1.25em;padding:2px; }
 		.page { padding:1em; }
 		.torrent { margin-bottom:1em; }
 		.torrent__name { display:block;overflow:hidden; }
 		.search__button, .torrent__magnet { height:32px;width:32px;background: url(data:image/png;base64,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) no-repeat top left; }
-		.search__button { display:inline-block;border:none;margin-left:5px;margin-right:5px; }
-		.search__button:focus { outline:none; }
+		.search__button { flex-shrink:0;display:inline-block;border:none;margin-left:5px;margin-right:5px; }
+		*:focus { outline:none; }
 		.search__button--active { animation-name:spin;animation-duration:3s;animation-iteration-count:infinite;-webkit-animation-name:spin;-webkit-animation-duration:3s;-webkit-animation-iteration-count:infinite; }
 		.torrent__magnet { display:block;float:left;margin-top:4px;margin-right:.5em; }
 		.torrent__size, .torrent__file-count, .torrent__seen, .torrent__tags { display:inline-block;padding-right:1em;white-space:nowrap; }
@@ -132,16 +152,29 @@ var html = []byte(`
 		<div id="page" class="page">
 		</div>
 		<script>
-var humanSize = function (bytes) {
+var interval = 5000
+var showSize = function (bytes) {
 	if (bytes === 0) {
-		return '0 Bytes'
+		return '0B'
 	}
-	var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+	var sizes = ['B', 'KB', 'MB', 'GB', 'TB']
 	var sizeIndex = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)), 10)
 	if (sizeIndex >= sizes.length) {
 		sizeIndex = sizes.length - 1
 	}
 	return (bytes / Math.pow(1024, sizeIndex)).toFixed(0) + sizes[sizeIndex]
+}
+var showDuration = function (seconds) {
+	var s = parseInt(seconds, 10)
+	var d = Math.floor(s / 86400)
+	var h = Math.floor((s -= (d * 86400)) / 3600)
+	var m = Math.floor((s -= (h * 3600)) / 60)
+	return d + 'd ' + h + 'h ' + m + 'm ' + (s - (m * 60)) + 's'
+}
+var showRate = function (o, n) {
+	o = o || 0
+	var rate = (n - o) / (interval / 1000)
+	return showSize(rate) + '/s'
 }
 var processResponse = function (resp) {
 	if (resp.status === 200 || resp.status === 0) {
@@ -150,8 +183,12 @@ var processResponse = function (resp) {
 		return new Error(resp.statusText)
 	}
 }
-var search = function (term) {
+var search = function (term, page) {
+	if (term.length < 3) {
+		return
+	}
 	bEl.classList.add('search__button--active')
+	page = parseInt(page, 10) || 1
 	var query = ''
 	var tIdx = term.indexOf('tag:')
 	if (tIdx >= 0) {
@@ -159,20 +196,24 @@ var search = function (term) {
 	} else {
 		query = 'q=' + term.trim()
     }
+	query += '&page=' + page
 	fetch('/search?' + query)
 	.then(processResponse)
 	.then(function (data) {
 		var pre = [
-		'<p>Displaying ', data.length, ' torrents.</p>',
+		'<p>Displaying ', data.torrents.length, ' torrents. ',
+		(data.page > 1) ? '<a class="pager prev" href="#">Previous</a>&nbsp;' : '',
+		(data.torrents.length === data.page_size) ? '<a class="pager next" href="#">Next</a>' : '',
+		'</p>',
 		'<ul id="results">'
 		].join('')
-		var torrents = data.map(function (t) {
+		var torrents = data.torrents.map(function (t) {
 			var magnet = 'magnet:?xt=urn:btih:' + t.infohash
 			return [
 			'<li class="torrent">',
 			'<a class="torrent__magnet" href="', magnet, '"></a>',
 			'<a class="torrent__name" href="', magnet, '">', t.name, '</a>',
-			'<span class="torrent__size">Size: ', humanSize(t.size), '</span>',
+			'<span class="torrent__size">Size: ', showSize(t.size), '</span>',
 			'<span class="torrent__seen">Last seen: <time datetime="', t.seen, '">', new Date(t.seen).toLocaleString(), '</time></span>',
 			'<span class="torrent__tags">Tags: ',
 			t.tags.map(function (g) { return '<a class="tag" href="/tags/' + g + '">' + g + '</a>' }).join(', '),
@@ -183,7 +224,7 @@ var search = function (term) {
 				return [
 				'<li class="files__file file">',
 				'<span class="file__path">', f.path, '</span>',
-				'<span class="file__size">[', humanSize(f.size), ']</span>',
+				'<span class="file__size">[', showSize(f.size), ']</span>',
 				'</li>'
 				].join('')
 			}).join(''),
@@ -191,7 +232,11 @@ var search = function (term) {
 			'</li>'
 			].join('')
 		}).join('')
-		var post = '</ul>'
+		var post = [
+		'</ul><p>'
+		(data.page > 1) ? '<a class="pager prev" href="#">Previous</a>&nbsp;' : '',
+		(data.torrents.length === data.page_size) ? '<a class="pager next" href="#">Next</a>' : '',
+		'</p>'].join('')
 		pEl.innerHTML = pre + torrents + post
 		bEl.classList.remove('search__button--active')
 		var togglers = document.getElementsByClassName('toggler')
@@ -202,6 +247,18 @@ var search = function (term) {
 				e.target.nextElementSibling.classList.toggle('files--active')
 			})
 		}
+		var pagers = document.getElementsByClassName('pager')
+		for (var i = 0; i < pagers.length; i += 1) {
+			var el = pagers[i]
+			el.addEventListener('click', function (e) {
+				e.preventDefault()
+				if (el.classList.contains('next')) {
+					search(term, data.page + 1)
+				} else {
+					search(term, data.page - 1)
+				}
+			})
+		}
 	})
 }
 var pEl = document.getElementById('page')
@@ -209,10 +266,7 @@ var sEl = document.getElementById('search')
 var bEl = document.getElementById('go')
 bEl.addEventListener('click', function () {
 	var term = sEl.value
-	if (term.length > 2) {
-		console.log('Search term: ', term)
-		search(term)
-	}
+	search(term)
 })
 sEl.addEventListener('keyup', function (e) {
 	if (e.keyCode === 13) {
@@ -220,6 +274,7 @@ sEl.addEventListener('keyup', function (e) {
 	}
 })
 var statsEl = document.getElementById('stats')
+var oldStats = {}
 var getStats = function () {
 	fetch('/stats')
 	.then(processResponse)
@@ -229,11 +284,12 @@ var getStats = function () {
 			'<dt class="stats__key">',
 			k.replace(/_/g,' '),
 			'</dt><dd class="stats__value">',
-			k.indexOf('bytes') === -1 ? data[k] : humanSize(data[k]),
+			k.indexOf('bytes') < 0 ? k.indexOf('time') < 0 ? data[k] : showDuration(data[k]) : showSize(data[k]) + ' (' + showRate(oldStats[k], data[k]) + ')',
 			'</dd>'
 			].join('')
 		}).join('')
-		setTimeout(getStats, 5000)
+		oldStats = data
+		setTimeout(getStats, interval)
 	})
 }
 getStats()
