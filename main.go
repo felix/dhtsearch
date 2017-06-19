@@ -146,7 +146,7 @@ func main() {
 			for _, tag := range Config.SkipTags {
 				if hasTag(t, tag) {
 					if !Config.Quiet {
-						fmt.Printf("Skipping torrent: %q\n", t.Name)
+						fmt.Printf("Skipping torrent tagged '%s': %q\n", tag, t.Name)
 					}
 					notWanted = true
 					break
