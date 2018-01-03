@@ -1,5 +1,5 @@
 
-BINARY=dht-search
+BINARY=dhtsearch
 VERSION=$(shell git describe --tags --always)
 SRC=$(shell find . -type f -name '*.go')
 
