@@ -1,4 +1,4 @@
-package main
+package dhtsearch
 
 import (
 	"fmt"
@@ -29,30 +29,30 @@ var tags = map[string]string{
 	"font":        `(font|\.(ttf|fon)$)`,
 }
 
-var tagREs map[string]*regexp.Regexp
-
-// Filter on words, existing
-func initTagRegexps() {
-	tagREs = make(map[string]*regexp.Regexp)
-	for tag, re := range tags {
-		tagREs[tag] = regexp.MustCompile("(?i)" + re)
-	}
+func mergeCharacterTagREs(tagREs map[string]*regexp.Regexp) error {
 	// Add character classes
-	for cc, _ := range unicode.Scripts {
+	for cc := range unicode.Scripts {
 		if cc == "Latin" || cc == "Common" {
 			continue
 		}
 		className := strings.ToLower(cc)
 		// Test for 3 or more characters per character class
-		tagREs[className] = regexp.MustCompile(fmt.Sprintf(`(?i)\p{%s}{3,}`, cc))
-	}
-	// Merge user tags
-	for tag, re := range Config.Tags {
-		if !Config.Quiet {
-			fmt.Printf("Adding user tag: %s = %s\n", tag, re)
+		tagREs[className], err = regexp.Compile(fmt.Sprintf(`(?i)\p{%s}{3,}`, cc))
+		if err != nil {
+			return err
 		}
-		tagREs[tag] = regexp.MustCompile("(?i)" + re)
 	}
+	return nil
+}
+
+func mergeTagRegexps(tagREs map[string]*regexp.Regexp, tags map[string]string) error {
+	for tag, re := range tags {
+		tagREs[tag], err = regexp.Compile("(?i)" + re)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func createTag(tag string) (tagId int, err error) {
