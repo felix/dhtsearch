@@ -63,3 +63,7 @@
 ## enforce that the alternate location is used for that project, regardless of
 ## what source location any dependent projects specify.
 # source = "https://github.com/myfork/package.git"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/IncSW/go-bencode"
