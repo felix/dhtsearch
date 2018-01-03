@@ -1,4 +1,4 @@
-package main
+package dhtsearch
 
 // Lifted from github.com/shiyanhui/dht
 

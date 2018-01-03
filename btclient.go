@@ -1,4 +1,4 @@
-package main
+package dhtsearch
 
 // Lifted and adapted from github.com/shiyanhui/dht
 
@@ -8,12 +8,13 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
 	"strings"
 	"time"
+
+	"github.com/felix/logger"
 )
 
 const (
