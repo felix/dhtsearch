@@ -1,34 +1,13 @@
-package main
+package dhtsearch
 
 import (
-	"expvar"
 	"fmt"
-	"time"
-	//"github.com/pkg/profile"
 	"net"
 	"net/http"
 	"os"
-)
+	"time"
 
-// Exported vars
-var (
-	dhtPacketsIn      = expvar.NewInt("dht_packets_in")
-	dhtPacketsOut     = expvar.NewInt("dht_packets_out")
-	dhtPacketsDropped = expvar.NewInt("dht_packets_dropped")
-	dhtErrorPackets   = expvar.NewInt("dht_error_packets")
-	dhtCachedPeers    = expvar.NewInt("dht_cached_peers")
-	dhtBytesIn        = expvar.NewInt("dht_bytes_in")
-	dhtBytesOut       = expvar.NewInt("dht_bytes_out")
-	dhtWorkers        = expvar.NewInt("dht_workers")
-	btBytesIn         = expvar.NewInt("bt_bytes_in")
-	btBytesOut        = expvar.NewInt("bt_bytes_out")
-	btWorkers         = expvar.NewInt("bt_workers")
-	peersAnnounced    = expvar.NewInt("peers_announced")
-	peersSkipped      = expvar.NewInt("peers_skipped")
-	torrentsSkipped   = expvar.NewInt("torrents_skipped")
-	torrentsSaved     = expvar.NewInt("torrents_saved")
-	torrentsTotal     = expvar.NewInt("torrents_total")
-	start             = time.Now()
+	"github.com/felix/logger"
 )
 
 func uptime() interface{} {
@@ -39,7 +18,10 @@ func main() {
 	//defer profile.Start(profile.CPUProfile).Stop()
 	expvar.Publish("uptime", expvar.Func(uptime))
 
-	loadConfig()
+	log := logger.New(&logger.Options{
+		Name:  "dht",
+		Level: logger.Info,
+	})
 
 	// Slice of channels for DHT node output
 	torrents := make(chan Torrent)
@@ -58,7 +40,7 @@ func main() {
 	defer DB.Close()
 
 	// Initialise tags
-	for tag, _ := range tags {
+	for tag := range tags {
 		_, err := createTag(tag)
 		if err != nil {
 			fmt.Printf("Error creating tag %s: %q\n", tag, err)
@@ -83,8 +65,9 @@ func main() {
 	filteredPeers := make(chan peer)
 
 	// Create BT node
-	btClient := newBTClient(filteredPeers, torrents)
-	err = btClient.run(done)
+	bt := &btClient{}
+	bt.log = log.Named("bt")
+	err = btClient.run(torrents)
 	if err != nil {
 		os.Exit(1)
 	}
