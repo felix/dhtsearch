@@ -18,23 +18,23 @@ import (
 )
 
 const (
-	// REQUEST represents request message type
-	REQUEST = iota
-	// DATA represents data message type
-	DATA
-	// REJECT represents reject message type
-	REJECT
+	// MsgRequest represents request message type
+	MsgRequest = iota
+	// MsgData represents data message type
+	MsgData
+	// MsgReject represents reject message type
+	MsgReject
+	// MsgExtended represents it is a extended message
+	MsgExtended = 20
 )
 
 const (
-	// BLOCK is 2 ^ 14
-	BLOCK = 16384
+	// BlockSize is 2 ^ 14
+	BlockSize = 16384
 	// MaxMetadataSize represents the max medata it can accept
-	MaxMetadataSize = BLOCK * 1000
-	// EXTENDED represents it is a extended message
-	EXTENDED = 20
-	// HANDSHAKE represents handshake bit
-	HANDSHAKE = 0
+	MaxMetadataSize = BlockSize * 1000
+	// HandshakeBit represents handshake bit
+	HandshakeBit = 0
 )
 
 var handshakePrefix = []byte{
@@ -114,7 +114,7 @@ func (bt *btClient) fetchMetadata(p peer) (out []byte, err error) {
 	defer conn.Close()
 
 	data := bytes.NewBuffer(nil)
-	data.Grow(BLOCK)
+	data.Grow(BlockSize)
 
 	// TCP handshake
 	if sendHandshake(conn, []byte(infoHash), []byte(genInfoHash())) != nil ||
@@ -140,7 +140,7 @@ func (bt *btClient) fetchMetadata(p peer) (out []byte, err error) {
 		}
 
 		switch msgType {
-		case EXTENDED:
+		case MsgExtended:
 			extendedID, err := data.ReadByte()
 			if err != nil {
 				return out, err
@@ -161,8 +161,8 @@ func (bt *btClient) fetchMetadata(p peer) (out []byte, err error) {
 					return out, err
 				}
 
-				piecesNum = metadataSize / BLOCK
-				if metadataSize%BLOCK != 0 {
+				piecesNum = metadataSize / BlockSize
+				if metadataSize%BlockSize != 0 {
 					piecesNum++
 				}
 
@@ -187,15 +187,15 @@ func (bt *btClient) fetchMetadata(p peer) (out []byte, err error) {
 				return out, err
 			}
 
-			if dict["msg_type"].(int) != DATA {
+			if dict["msg_type"].(int) != MsgData {
 				continue
 			}
 
 			piece := dict["piece"].(int)
 			pieceLen := length - 2 - index
 
-			if (piece != piecesNum-1 && pieceLen != BLOCK) ||
-				(piece == piecesNum-1 && pieceLen != metadataSize%BLOCK) {
+			if (piece != piecesNum-1 && pieceLen != BlockSize) ||
+				(piece == piecesNum-1 && pieceLen != metadataSize%BlockSize) {
 				return out, errors.New("invalid piece count")
 			}
 
@@ -337,7 +337,7 @@ func onHandshake(data []byte) (err error) {
 // sendExtHandshake requests for the ut_metadata and metadata_size.
 func sendExtHandshake(conn *net.TCPConn) error {
 	data := append(
-		[]byte{EXTENDED, HANDSHAKE},
+		[]byte{MsgExtended, HandshakeBit},
 		Encode(map[string]interface{}{
 			"m": map[string]interface{}{"ut_metadata": 1},
 		})...,
@@ -382,11 +382,11 @@ func getUTMetaSize(data []byte) (utMetadata int, metadataSize int, err error) {
 func (bt *btClient) requestPieces(conn *net.TCPConn, utMetadata int, metadataSize int, piecesNum int) {
 	buffer := make([]byte, 1024)
 	for i := 0; i < piecesNum; i++ {
-		buffer[0] = EXTENDED
+		buffer[0] = MsgExtended
 		buffer[1] = byte(utMetadata)
 
 		msg := Encode(map[string]interface{}{
-			"msg_type": REQUEST,
+			"msg_type": MsgRequest,
 			"piece":    i,
 		})
 
