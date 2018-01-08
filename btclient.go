@@ -65,7 +65,6 @@ func (bt *btClient) run(torrentCh chan<- *Torrent) error {
 			select {
 			case p := <-peerCh:
 				// Got work
-				btWorkers.Add(1)
 				if len(p.id) != 20 {
 					return
 				}
@@ -277,7 +276,6 @@ func read(conn *net.TCPConn, size int, data *bytes.Buffer) error {
 	if err != nil || n != int64(size) {
 		return errors.New("read error")
 	}
-	btBytesIn.Add(n)
 	return nil
 }
 
@@ -309,7 +307,6 @@ func sendMessage(conn *net.TCPConn, data []byte) error {
 
 	conn.SetWriteDeadline(time.Now().Add(time.Second * time.Duration(TCPTimeout)))
 	b, err := conn.Write(append(buffer.Bytes(), data...))
-	btBytesOut.Add(int64(b))
 	return err
 }
 
@@ -322,7 +319,6 @@ func sendHandshake(conn *net.TCPConn, infoHash, peerID []byte) error {
 
 	conn.SetWriteDeadline(time.Now().Add(time.Second * time.Duration(TCPTimeout)))
 	b, err := conn.Write(data)
-	btBytesOut.Add(int64(b))
 	return err
 }
 

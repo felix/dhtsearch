@@ -24,6 +24,5 @@ func newDB(dsn string) (*database, error) {
 	if err != nil {
 		return nil, err
 	}
-	torrentsTotal.Set(int64(count))
 	return &database{d}, nil
 }

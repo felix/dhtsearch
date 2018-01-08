@@ -1,10 +1,13 @@
 package dhtsearch
 
 import (
-	"fmt"
+	"math"
 	"net"
 	"strconv"
+	"sync/atomic"
 	"time"
+
+	"github.com/felix/logger"
 )
 
 var (
@@ -15,76 +18,50 @@ var (
 	}
 )
 
-type DHTNode struct {
-	id           string
-	address      string
-	port         int
-	conn         *net.UDPConn
-	tid          uint32
-	kTable       kTable
-	peerChan     chan<- peer
-	packetsIn    chan packet
-	packetsOut   chan packet
-	workerTokens chan struct{}
+type dhtNode struct {
+	id         string
+	address    string
+	port       int
+	conn       *net.UDPConn
+	pool       chan chan packet
+	workers    int
+	tid        uint32
+	packetsOut chan packet
+	peersOut   chan<- peer
+	log        logger.Logger
+	//table      routingTable
 }
 
-// Unprocessed packet from socket
-type packet struct {
-	b     []byte
-	raddr net.UDPAddr
-}
-
-func newDHTNode(address string, port int, p chan<- peer) (node *DHTNode) {
-	node = &DHTNode{
-		address:      address,
-		port:         port,
-		workerTokens: make(chan struct{}, Config.Advanced.MaxDhtWorkers),
-		peerChan:     p,
-	}
-
-	// Get random id for this node
-	node.id = genInfoHash()
-	node.kTable = newKTable(node.id)
-	return
-}
-
-func (d *DHTNode) run(done <-chan struct{}) error {
+func (d *dhtNode) run() {
 	listener, err := net.ListenPacket("udp4", d.address+":"+strconv.Itoa(d.port))
 	if err != nil {
-		fmt.Printf("Failed to listen: %s\n", err)
-		return err
+		d.log.Error("failed to listen", "error", err)
+		return
 	}
 	d.conn = listener.(*net.UDPConn)
 	d.port = d.conn.LocalAddr().(*net.UDPAddr).Port
 
-	if !Config.Quiet {
-		fmt.Printf("DHT node listening at %s:%d\n", d.address, d.port)
-	}
+	d.log.Info("listening", "address", d.address, "port", d.port)
 
-	// Packets off the network
-	d.packetsIn = make(chan packet)
+	d.pool = make(chan chan packet)
+
 	// Packets onto the network
-	d.packetsOut = make(chan packet)
+	d.packetsOut = make(chan packet, 512)
 
 	// Create a slab for allocation
-	byteSlab := newSlab(8192, Config.NumNodes)
+	byteSlab := newSlab(8192, 10)
 
-	// Start reading packets from conn into channel
-	go func() {
-		for {
-			b := byteSlab.Alloc()
-			c, addr, err := d.conn.ReadFromUDP(b)
-			if err != nil {
-				fmt.Println("UDP read error", err)
-				continue
-			}
-			// Chop and send
-			d.packetsIn <- packet{b[0:c], *addr}
-			byteSlab.Free(b)
-			dhtBytesIn.Add(int64(c))
-			dhtPacketsIn.Add(1)
+	rTable := newRoutingTable(d.id)
+
+	// Start our workers
+	for i := 0; i < d.workers; i++ {
+		w := &dhtWorker{
+			pool:       d.pool,
+			packetsOut: d.packetsOut,
+			peersOut:   d.peersOut,
+			rTable:     rTable,
 		}
-	}()
+	}
 
 	// Start writing packets from channel to DHT
 	go func() {
@@ -92,18 +69,12 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 		for {
 			select {
 			case p = <-d.packetsOut:
-				d.conn.SetWriteDeadline(time.Now().Add(time.Second * time.Duration(Config.Advanced.UdpTimeout)))
+				d.conn.SetWriteDeadline(time.Now().Add(time.Second * time.Duration(UDPTimeout)))
 				b, err := d.conn.WriteToUDP(p.b, &p.raddr)
 				if err != nil {
-					dhtErrorPackets.Add(1)
-					// TODO remove from kTable or add to blacklist?
-					if Config.Debug {
-						fmt.Printf("Error writing packet %s\n", err)
-					}
-				} else {
-					dhtPacketsOut.Add(1)
+					// TODO remove from routing or add to blacklist?
+					d.log.Error("failed to write packet", "error", err)
 				}
-				dhtBytesOut.Add(int64(b))
 			}
 		}
 	}()
@@ -111,35 +82,44 @@ func (d *DHTNode) run(done <-chan struct{}) error {
 	// TODO configurable
 	ticker := time.Tick(5 * time.Second)
 
-	// Read and process packets from incoming channel
-	var p packet
-	go func() {
-		defer d.conn.Close()
-		for {
-			select {
-			case <-done:
-				fmt.Println("Stopping")
-				return
-			case p = <-d.packetsIn:
-				d.processPacket(p)
-			case <-ticker:
-				if btWorkers.Value() == 0 {
-					go d.makeNeighbours()
-				}
-			}
+	// Send packets from conn to workers
+	for {
+		b := byteSlab.Alloc()
+		c, addr, err := d.conn.ReadFromUDP(b)
+		if err != nil {
+			d.log.Warn("read error", "error", err)
+			continue
 		}
-	}()
-	return nil
+
+		select {
+		case pCh := <-d.pool:
+			// Chop and send
+			pCh <- packet{b[0:c], *addr}
+			byteSlab.Free(b)
+
+		case <-ticker:
+			go func() {
+				d.log.Debug("making neighbours")
+				if rTable.isEmpty() {
+					d.bootstrap()
+				} else {
+					for _, rn := range rTable.getNodes() {
+						d.findNode(rn, rn.id)
+					}
+					rTable.refresh()
+				}
+			}()
+		}
+	}
+	return
 }
 
-func (d *DHTNode) bootstrap() {
-	if Config.Debug {
-		fmt.Println("Bootstrapping")
-	}
+func (d *dhtNode) bootstrap() {
+	d.log.Debug("bootstrapping")
 	for _, s := range routers {
 		addr, err := net.ResolveUDPAddr("udp4", s)
 		if err != nil {
-			fmt.Printf("Error parsing bootstrap address: %s\n", err)
+			d.log.Error("failed to parse bootstrap address", "error", err)
 			return
 		}
 		rn := newRemoteNode(*addr, "")
@@ -147,28 +127,13 @@ func (d *DHTNode) bootstrap() {
 	}
 }
 
-func (d *DHTNode) makeNeighbours() {
-	if Config.Debug {
-		fmt.Println("Making neighbours")
-	}
-	if d.kTable.isEmpty() {
-		d.bootstrap()
-	} else {
-		for _, rn := range d.kTable.getNodes() {
-			d.findNode(rn, rn.id)
-		}
-		d.kTable.refresh()
-	}
-}
-
-func (d DHTNode) findNode(rn *remoteNode, target string) {
+func (d dhtNode) findNode(rn *remoteNode, target string) {
 	var id string
 	if target == "" {
 		id = d.id
 	} else {
 		id = genNeighbour(d.id, target)
 	}
-	// fmt.Printf("Sending find_node msg id:%x target:%x addr:%s\n", id, target, rn.address)
 	d.sendQuery(rn, "find_node", map[string]interface{}{
 		"id":     id,
 		"target": genInfoHash(),
@@ -176,62 +141,31 @@ func (d DHTNode) findNode(rn *remoteNode, target string) {
 }
 
 // ping sends ping query to the chan.
-func (d *DHTNode) ping(rn *remoteNode) {
+func (d *dhtNode) ping(rn *remoteNode) {
 	d.sendQuery(rn, "ping", map[string]interface{}{
 		"id": genNeighbour(d.id, rn.id),
 	})
 }
 
-// Process another node's response to a find_node query.
-func (d *DHTNode) processFindNodeResults(rn *remoteNode, nodeList string) {
-	nodeLength := 26
-	/*
-		if d.config.proto == "udp6" {
-			nodeList = m.R.Nodes6
-			nodeLength = 38
-		} else {
-			nodeList = m.R.Nodes
-		}
+func (d dhtNode) sendQuery(rn *remoteNode, qType string, a map[string]interface{}) {
 
-		// Not much to do
-		if nodeList == "" {
-			return
-		}
-	*/
-
-	if len(nodeList)%nodeLength != 0 {
-		fmt.Printf("Node list is wrong length, got %d\n", len(nodeList))
+	// Stop if sending to self
+	if rn.id == d.id {
 		return
 	}
 
-	// We got a byte array in groups of 26 or 38
-	for i := 0; i < len(nodeList); i += nodeLength {
-		id := nodeList[i : i+ihLength]
-		addr := compactNodeInfoToString(nodeList[i+ihLength : i+nodeLength])
-		//fmt.Printf("Node list entry %s @ %s\n", id, addr)
+	t := d.newTransactionId()
 
-		//fmt.Printf("find_node response id len:%d address:%s\n", len(id), addr)
+	d.sendMsg(rn.address, makeQuery(t, qType, a))
+}
 
-		if d.id == id {
-			if Config.Debug {
-				fmt.Println("find_nodes ignoring self")
-			}
-			continue
-		}
+// bencode data and send
+func (d *dhtNode) sendMsg(raddr net.UDPAddr, data map[string]interface{}) {
+	d.packetsOut <- packet{[]byte(Encode(data)), raddr}
+}
 
-		address, err := net.ResolveUDPAddr("udp4", addr)
-		if err != nil {
-			fmt.Printf("Error parsing node from find_find response: %s\n", err)
-			continue
-		}
-		// Check IP and ports are valid and not self
-		if (address.IP.String() == d.address &&
-			address.Port == d.port) ||
-			id == d.id || id == "" {
-			fmt.Println("Trying to add invalid node")
-			continue
-		}
-		rn := newRemoteNode(*address, id)
-		d.kTable.add(rn)
-	}
+func (d *dhtNode) newTransactionId() string {
+	t := atomic.AddUint32(&d.tid, 1)
+	t = t % math.MaxUint16
+	return strconv.Itoa(int(t))
 }

@@ -68,7 +68,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(200)
-		json.NewEncoder(w).Encode(results{Page: page, PageSize: Config.Advanced.ResultsPageSize, Torrents: torrents})
+		json.NewEncoder(w).Encode(results{Page: page, PageSize: Config.ResultsPageSize, Torrents: torrents})
 		return
 	}
 
@@ -80,7 +80,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(200)
-		json.NewEncoder(w).Encode(results{Page: page, PageSize: Config.Advanced.ResultsPageSize, Torrents: torrents})
+		json.NewEncoder(w).Encode(results{Page: page, PageSize: Config.ResultsPageSize, Torrents: torrents})
 		return
 	}
 

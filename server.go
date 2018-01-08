@@ -8,6 +8,7 @@ import (
 
 const (
 	TCPTimeout = 10
+	UDPTimeout = 10
 )
 
 type Server struct {
@@ -49,7 +50,7 @@ func NewServer(dsn string, opts ...Option) (*Server, error) {
 
 	// Set variadic options passed
 	for _, option := range opts {
-		err = option(l)
+		err = option(s)
 		if err != nil {
 			return nil, err
 		}
@@ -57,12 +58,28 @@ func NewServer(dsn string, opts ...Option) (*Server, error) {
 
 	s.log.Debug("debugging output enabled")
 
+	peers := make(chan peer)
+
+	for i := 0; i < s.nodes; i++ {
+		// Consecutive port numbers
+		port := s.port + i
+		node := &dhtNode{
+			id:       genInfoHash(),
+			address:  "",
+			port:     port,
+			workers:  2,
+			log:      s.log.Named("dht"),
+			peersOut: peers,
+		}
+		go node.run()
+	}
+
 	return s, nil
 }
 
 // SetLogger sets the server
 func SetLogger(l logger.Logger) Option {
-	return func(s *Loader) error {
+	return func(s *Server) error {
 		s.log = l
 		return nil
 	}
@@ -70,7 +87,7 @@ func SetLogger(l logger.Logger) Option {
 
 // SetPort sets the base port
 func SetPort(p int) Option {
-	return func(s *Loader) error {
+	return func(s *Server) error {
 		s.port = p
 		return nil
 	}
@@ -78,7 +95,7 @@ func SetPort(p int) Option {
 
 // SetNodes determines the number of nodes to start
 func SetNodes(n int) Option {
-	return func(s *Loader) error {
+	return func(s *Server) error {
 		s.nodes = n
 		return nil
 	}
@@ -86,7 +103,7 @@ func SetNodes(n int) Option {
 
 // SetHTTPAddress determines the listening address for HTTP
 func SetHTTPAddress(a string) Option {
-	return func(s *Loader) error {
+	return func(s *Server) error {
 		s.httpAddress = a
 		return nil
 	}
@@ -94,7 +111,7 @@ func SetHTTPAddress(a string) Option {
 
 // SetTags determines the listening address for HTTP
 func SetTags(tags map[string]string) Option {
-	return func(s *Loader) error {
+	return func(s *Server) error {
 		// Merge user tags
 		err := mergeTagRegexps(s.tagREs, tags)
 		if err != nil {
@@ -105,7 +122,7 @@ func SetTags(tags map[string]string) Option {
 }
 
 func (s *Server) Stats() Stats {
-	l.statlock.RLock()
-	defer l.statlock.RUnlock()
-	return l.stats
+	s.statlock.RLock()
+	defer s.statlock.RUnlock()
+	return s.stats
 }
