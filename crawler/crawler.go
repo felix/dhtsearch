@@ -1,4 +1,4 @@
-package dhtsearch
+package crawler
 
 import (
 	"regexp"
@@ -7,11 +7,11 @@ import (
 )
 
 const (
-	TCPTimeout = 10
-	UDPTimeout = 10
+	TCPTimeout = 5
+	UDPTimeout = 5
 )
 
-type Server struct {
+type Crawler struct {
 	port        int
 	nodes       int
 	httpAddress string
@@ -20,10 +20,11 @@ type Server struct {
 }
 
 // Option are options for the server
-type Option func(*Server) error
+type Option func(*Crawler) error
 
-func NewServer(dsn string, opts ...Option) (*Server, error) {
-	s := &Server{
+// NewCrawler creates a set of DHT nodes to crawl the network
+func NewCrawer(opts ...Option) (*Crawler, error) {
+	s := &Crawler{
 		port:        6881,
 		nodes:       1,
 		httpAddress: "localhost:6880",
@@ -32,7 +33,7 @@ func NewServer(dsn string, opts ...Option) (*Server, error) {
 
 	// Default logger
 	logOpts := &logger.Options{
-		Name:  "dhtsearch",
+		Name:  "crawler",
 		Level: logger.Info,
 	}
 	s.log = logger.New(logOpts)
@@ -79,7 +80,7 @@ func NewServer(dsn string, opts ...Option) (*Server, error) {
 
 // SetLogger sets the server
 func SetLogger(l logger.Logger) Option {
-	return func(s *Server) error {
+	return func(s *Crawler) error {
 		s.log = l
 		return nil
 	}
@@ -87,7 +88,7 @@ func SetLogger(l logger.Logger) Option {
 
 // SetPort sets the base port
 func SetPort(p int) Option {
-	return func(s *Server) error {
+	return func(s *Crawler) error {
 		s.port = p
 		return nil
 	}
@@ -95,7 +96,7 @@ func SetPort(p int) Option {
 
 // SetNodes determines the number of nodes to start
 func SetNodes(n int) Option {
-	return func(s *Server) error {
+	return func(s *Crawler) error {
 		s.nodes = n
 		return nil
 	}
@@ -103,7 +104,7 @@ func SetNodes(n int) Option {
 
 // SetHTTPAddress determines the listening address for HTTP
 func SetHTTPAddress(a string) Option {
-	return func(s *Server) error {
+	return func(s *Crawler) error {
 		s.httpAddress = a
 		return nil
 	}
@@ -111,7 +112,7 @@ func SetHTTPAddress(a string) Option {
 
 // SetTags determines the listening address for HTTP
 func SetTags(tags map[string]string) Option {
-	return func(s *Server) error {
+	return func(s *Crawler) error {
 		// Merge user tags
 		err := mergeTagRegexps(s.tagREs, tags)
 		if err != nil {
@@ -121,7 +122,7 @@ func SetTags(tags map[string]string) Option {
 	}
 }
 
-func (s *Server) Stats() Stats {
+func (s *Crawler) Stats() Stats {
 	s.statlock.RLock()
 	defer s.statlock.RUnlock()
 	return s.stats

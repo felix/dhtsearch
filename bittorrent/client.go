@@ -14,7 +14,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/felix/dhtsearch/bencode"
 	"github.com/felix/logger"
+)
+
+const (
+	TCPTimeout = 5
+	UDPTimeout = 5
 )
 
 const (
@@ -175,7 +181,7 @@ func (bt *btClient) fetchMetadata(p peer) (out []byte, err error) {
 				return out, errors.New("no pieces found")
 			}
 
-			d, index, err := DecodeDict(payload, 0)
+			d, index, err := bencode.DecodeDict(payload, 0)
 			if err != nil {
 				return out, err
 			}
@@ -217,7 +223,7 @@ func (bt *btClient) fetchMetadata(p peer) (out []byte, err error) {
 }
 
 func decodeMetadata(p peer, md []byte) (*Torrent, error) {
-	metadata, err := Decode(md)
+	metadata, err := bencode.Decode(md)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +340,7 @@ func onHandshake(data []byte) (err error) {
 func sendExtHandshake(conn *net.TCPConn) error {
 	data := append(
 		[]byte{MsgExtended, HandshakeBit},
-		Encode(map[string]interface{}{
+		bencode.Encode(map[string]interface{}{
 			"m": map[string]interface{}{"ut_metadata": 1},
 		})...,
 	)
@@ -344,7 +350,7 @@ func sendExtHandshake(conn *net.TCPConn) error {
 
 // getUTMetaSize returns the ut_metadata and metadata_size.
 func getUTMetaSize(data []byte) (utMetadata int, metadataSize int, err error) {
-	v, err := Decode(data)
+	v, err := bencode.Decode(data)
 	if err != nil {
 		return utMetadata, metadataSize, err
 	}
@@ -381,7 +387,7 @@ func (bt *btClient) requestPieces(conn *net.TCPConn, utMetadata int, metadataSiz
 		buffer[0] = MsgExtended
 		buffer[1] = byte(utMetadata)
 
-		msg := Encode(map[string]interface{}{
+		msg := bencode.Encode(map[string]interface{}{
 			"msg_type": MsgRequest,
 			"piece":    i,
 		})

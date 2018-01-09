@@ -1,4 +1,4 @@
-package dhtsearch
+package crawler
 
 import "net"
 

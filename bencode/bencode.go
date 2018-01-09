@@ -1,4 +1,4 @@
-package dhtsearch
+package bencode
 
 // Lifted from github.com/shiyanhui/dht
 
