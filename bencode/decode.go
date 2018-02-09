@@ -15,20 +15,21 @@ func Decode(data []byte) (r interface{}, err error) {
 
 // DecodeString decodes a string from a given index
 // It returns the string and the position of the last character
+// or the offset at the point of error
 func DecodeString(data []byte, start int) (r string, end int, err error) {
 	if start >= len(data) || data[start] < '0' || data[start] > '9' {
 		err = errors.New("bencode: invalid string length")
-		return r, end, err
+		return r, 0, err
 	}
 
 	prefix, i, err := readUntil(data, start, ':')
 	if err != nil {
-		return r, end, err
+		return r, i, err
 	}
 
 	length, err := strconv.ParseInt(string(prefix), 10, 0)
 	if err != nil {
-		return r, end, err
+		return r, 0, err
 	}
 
 	end = i + int(length)
@@ -146,7 +147,6 @@ func DecodeDict(data []byte, start int) (r map[string]interface{}, end int, err 
 // decodeItem decodes the next type at the given index
 // It returns the index of the last character decoded
 func decodeItem(data []byte, start int) (r interface{}, end int, err error) {
-
 	switch data[start] {
 	case 'l':
 		return DecodeList(data, start)
@@ -161,6 +161,7 @@ func decodeItem(data []byte, start int) (r interface{}, end int, err error) {
 
 // Read until the given character
 // Returns the slice before the character and the index of the next character
+// or the offset at the point of error
 func readUntil(data []byte, start int, c byte) ([]byte, int, error) {
 	i := start
 	for ; i < len(data); i++ {

@@ -72,6 +72,8 @@ func EncodeList(data []interface{}) ([]byte, error) {
 // EncodeItem encodes an item of dict or list.
 func encodeItem(data interface{}) ([]byte, error) {
 	switch v := data.(type) {
+	case []byte:
+		return EncodeString(string(v))
 	case string:
 		return EncodeString(v)
 	case int:
