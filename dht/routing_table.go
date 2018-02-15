@@ -1,57 +1,119 @@
 package dht
 
 import (
-	"net"
+	"container/heap"
 	"sync"
 )
 
-// Keep it simple for now
+type rItem struct {
+	value    *remoteNode
+	distance int
+	index    int // Index in heap
+}
+
+type priorityQueue []*rItem
+
 type routingTable struct {
-	id      Infohash
-	address net.UDPAddr
-	nodes   []*remoteNode
-	max     int
+	id        Infohash
+	max       int
+	items     priorityQueue
+	addresses map[string]*remoteNode
 	sync.Mutex
 }
 
-func newRoutingTable(id Infohash) *routingTable {
-	k := &routingTable{id: id, max: 4000}
-	k.refresh()
-	return k
+func newRoutingTable(id Infohash, max int) (*routingTable, error) {
+	k := &routingTable{
+		id:  id,
+		max: max,
+	}
+	k.flush()
+	heap.Init(&k.items)
+	return k, nil
+}
+
+// Len implements sort.Interface
+func (pq priorityQueue) Len() int { return len(pq) }
+
+// Less implements sort.Interface
+func (pq priorityQueue) Less(i, j int) bool {
+	return pq[i].distance > pq[j].distance
+}
+
+// Swap implements sort.Interface
+func (pq priorityQueue) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+	pq[i].index = i
+	pq[j].index = j
+}
+
+// Push implements heap.Interface
+func (pq *priorityQueue) Push(x interface{}) {
+	n := len(*pq)
+	item := x.(*rItem)
+	item.index = n
+	*pq = append(*pq, item)
+}
+
+// Pop implements heap.Interface
+func (pq *priorityQueue) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	item.index = -1 // for safety
+	*pq = old[0 : n-1]
+	return item
 }
 
 func (k *routingTable) add(rn *remoteNode) {
-	k.Lock()
-	defer k.Unlock()
-
 	// Check IP and ports are valid and not self
-	if (rn.address.String() == k.address.String() && rn.address.Port == k.address.Port) || !rn.id.Valid() || rn.id.Equal(k.id) {
+	if !rn.id.Valid() || rn.id.Equal(k.id) {
 		return
 	}
-	k.nodes = append(k.nodes, rn)
-}
 
-func (k *routingTable) getNodes() []*remoteNode {
 	k.Lock()
 	defer k.Unlock()
-	return k.nodes
+
+	if _, ok := k.addresses[rn.address.String()]; ok {
+		return
+	}
+	k.addresses[rn.address.String()] = rn
+
+	item := &rItem{
+		value:    rn,
+		distance: k.id.Distance(rn.id),
+	}
+
+	heap.Push(&k.items, item)
+
+	if len(k.items) > k.max {
+		for i := k.max - 1; i < len(k.items); i++ {
+			old := k.items[i]
+			delete(k.addresses, old.value.address.String())
+			heap.Remove(&k.items, i)
+		}
+	}
+}
+
+func (k *routingTable) get(n int) (out []*remoteNode) {
+	if n == 0 {
+		n = len(k.items)
+	}
+	for i := 0; i < n && i < len(k.items); i++ {
+		out = append(out, k.items[i].value)
+	}
+	return out
+}
+
+func (k *routingTable) flush() {
+	k.Lock()
+	defer k.Unlock()
+
+	k.items = make(priorityQueue, 0)
+	k.addresses = make(map[string]*remoteNode, k.max)
 }
 
 func (k *routingTable) isEmpty() bool {
 	k.Lock()
 	defer k.Unlock()
-	return len(k.nodes) == 0
-}
-
-func (k *routingTable) isFull() bool {
-	k.Lock()
-	defer k.Unlock()
-	return len(k.nodes) >= k.max
-}
-
-// For now
-func (k *routingTable) refresh() {
-	k.Lock()
-	defer k.Unlock()
-	k.nodes = make([]*remoteNode, 0)
+	return len(k.items) == 0
 }

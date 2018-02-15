@@ -14,11 +14,11 @@ func newSlab(blockSize int, numBlocks int) slab {
 	return s
 }
 
-func (s slab) Alloc() (x []byte) {
+func (s slab) alloc() (x []byte) {
 	return <-s
 }
 
-func (s slab) Free(x []byte) {
+func (s slab) free(x []byte) {
 	// Check we are using the right dimensions
 	x = x[:cap(x)]
 	s <- x

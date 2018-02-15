@@ -6,6 +6,13 @@ import (
 
 type Option func(*Node) error
 
+func SetOnAnnouncePeer(f func(Peer)) Option {
+	return func(n *Node) error {
+		n.OnAnnouncePeer = f
+		return nil
+	}
+}
+
 // SetAddress sets the IP address to listen on
 func SetAddress(ip string) Option {
 	return func(n *Node) error {
@@ -22,14 +29,6 @@ func SetPort(p int) Option {
 	}
 }
 
-// SetWorkers sets the number of workers
-func SetWorkers(c int) Option {
-	return func(n *Node) error {
-		n.workers = make([]*dhtWorker, c)
-		return nil
-	}
-}
-
 // SetUDPTimeout sets the number of seconds to wait for UDP connections
 func SetUDPTimeout(s int) Option {
 	return func(n *Node) error {
@@ -38,7 +37,7 @@ func SetUDPTimeout(s int) Option {
 	}
 }
 
-// SetLogger sets the number of workers
+// SetLogger sets the logger
 func SetLogger(l logger.Logger) Option {
 	return func(n *Node) error {
 		n.log = l

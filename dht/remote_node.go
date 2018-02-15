@@ -3,16 +3,15 @@ package dht
 import (
 	"fmt"
 	"net"
-	//"time"
 )
 
 type remoteNode struct {
-	address net.UDPAddr
+	address net.Addr
 	id      Infohash
 	//lastSeen time.Time
 }
 
 // String implements fmt.Stringer
-func (r *remoteNode) String() string {
-	return fmt.Sprintf("%s:%d", r.address.IP.String(), r.address.Port)
+func (r remoteNode) String() string {
+	return fmt.Sprintf("%s (%s)", r.id.String(), r.address.String())
 }

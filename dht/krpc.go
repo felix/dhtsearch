@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"strconv"
 )
 
 const transIDBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -36,19 +37,40 @@ func makeResponse(t string, r map[string]interface{}) map[string]interface{} {
 	}
 }
 
-// parseMessage parses the basic data received from udp.
-// It returns a map value.
-func parseMessage(data interface{}) (map[string]interface{}, error) {
-	response, ok := data.(map[string]interface{})
+func getStringKey(data map[string]interface{}, key string) (string, error) {
+	val, ok := data[key]
 	if !ok {
-		return nil, errors.New("response is not dict")
+		return "", fmt.Errorf("krpc: missing key %s", key)
 	}
-
-	if err := checkKeys(response, [][]string{{"t", "string"}, {"y", "string"}}); err != nil {
-		return nil, err
+	out, ok := val.(string)
+	if !ok {
+		return "", fmt.Errorf("krpc: key type mismatch")
 	}
+	return out, nil
+}
 
-	return response, nil
+func getMapKey(data map[string]interface{}, key string) (map[string]interface{}, error) {
+	val, ok := data[key]
+	if !ok {
+		return nil, fmt.Errorf("krpc: missing key %s", key)
+	}
+	out, ok := val.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("krpc: key type mismatch")
+	}
+	return out, nil
+}
+
+func getListKey(data map[string]interface{}, key string) ([]interface{}, error) {
+	val, ok := data[key]
+	if !ok {
+		return nil, fmt.Errorf("krpc: missing key %s", key)
+	}
+	out, ok := val.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("krpc: key type mismatch")
+	}
+	return out, nil
 }
 
 // parseKeys parses keys. It just wraps parseKey.
@@ -100,4 +122,38 @@ func compactNodeInfoToString(cni string) string {
 	} else {
 		return ""
 	}
+}
+
+func stringToCompactNodeInfo(addr string) ([]byte, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return []byte{}, err
+	}
+	pInt, err := strconv.ParseInt(port, 10, 64)
+	if err != nil {
+		return []byte{}, err
+	}
+	p := int2bytes(pInt)
+	if len(p) < 2 {
+		p = append(p, p[0])
+		p[0] = 0
+	}
+	return append([]byte(host), p...), nil
+}
+
+func int2bytes(val int64) []byte {
+	data, j := make([]byte, 8), -1
+	for i := 0; i < 8; i++ {
+		shift := uint64((7 - i) * 8)
+		data[i] = byte((val & (0xff << shift)) >> shift)
+
+		if j == -1 && data[i] != 0 {
+			j = i
+		}
+	}
+
+	if j != -1 {
+		return data[j:]
+	}
+	return data[:1]
 }
