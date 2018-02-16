@@ -29,6 +29,16 @@ func SetPort(p int) Option {
 	}
 }
 
+// SetIPv6 enables IPv6
+func SetIPv6(b bool) Option {
+	return func(n *Node) error {
+		if b {
+			n.family = "udp6"
+		}
+		return nil
+	}
+}
+
 // SetUDPTimeout sets the number of seconds to wait for UDP connections
 func SetUDPTimeout(s int) Option {
 	return func(n *Node) error {

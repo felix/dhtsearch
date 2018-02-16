@@ -113,7 +113,7 @@ func checkKey(data map[string]interface{}, key string, t string) error {
 }
 
 // Swiped from nictuku
-func compactNodeInfoToString(cni string) string {
+func decodeCompactNodeAddr(cni string) string {
 	if len(cni) == 6 {
 		return fmt.Sprintf("%d.%d.%d.%d:%d", cni[0], cni[1], cni[2], cni[3], (uint16(cni[4])<<8)|uint16(cni[5]))
 	} else if len(cni) == 18 {
@@ -124,21 +124,27 @@ func compactNodeInfoToString(cni string) string {
 	}
 }
 
-func stringToCompactNodeInfo(addr string) ([]byte, error) {
-	host, port, err := net.SplitHostPort(addr)
-	if err != nil {
-		return []byte{}, err
+func encodeCompactNodeAddr(addr string) string {
+	var a []uint8
+	host, port, _ := net.SplitHostPort(addr)
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return ""
 	}
-	pInt, err := strconv.ParseInt(port, 10, 64)
-	if err != nil {
-		return []byte{}, err
+	aa, _ := strconv.ParseUint(port, 10, 16)
+	c := uint16(aa)
+	if ip2 := net.IP.To4(ip); ip2 != nil {
+		a = make([]byte, net.IPv4len+2, net.IPv4len+2)
+		copy(a, ip2[0:net.IPv4len]) // ignore bytes IPv6 bytes if it's IPv4.
+		a[4] = byte(c >> 8)
+		a[5] = byte(c)
+	} else {
+		a = make([]byte, net.IPv6len+2, net.IPv6len+2)
+		copy(a, ip)
+		a[16] = byte(c >> 8)
+		a[17] = byte(c)
 	}
-	p := int2bytes(pInt)
-	if len(p) < 2 {
-		p = append(p, p[0])
-		p[0] = 0
-	}
-	return append([]byte(host), p...), nil
+	return string(a)
 }
 
 func int2bytes(val int64) []byte {

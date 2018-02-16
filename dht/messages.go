@@ -3,6 +3,7 @@ package dht
 import (
 	"fmt"
 	"net"
+	"strings"
 )
 
 func (n *Node) onPingQuery(rn remoteNode, msg map[string]interface{}) {
@@ -30,22 +31,35 @@ func (n *Node) onGetPeersQuery(rn remoteNode, msg map[string]interface{}) {
 	token := []byte(*th)[:2]
 
 	id := generateNeighbour(n.id, *th)
+	nodes := n.rTable.get(8)
+	compactNS := []string{}
+	for _, rn := range nodes {
+		ns := encodeCompactNodeAddr(rn.address.String())
+		if ns == "" {
+			n.log.Warn("failed to compact node", "address", rn.address.String())
+			continue
+		}
+		compactNS = append(compactNS, ns)
+	}
+
 	t := msg["t"].(string)
 	n.queueMsg(rn, makeResponse(t, map[string]interface{}{
 		"id":    string(id),
 		"token": token,
-		"nodes": "",
+		"nodes": strings.Join(compactNS, ""),
 	}))
 
-	nodes := n.rTable.get(50)
-	fmt.Printf("sending get_peers for %s to %d nodes\n", *th, len(nodes))
-	q := makeQuery(newTransactionID(), "get_peers", map[string]interface{}{
-		"id":        string(id),
-		"info_hash": string(*th),
-	})
-	for _, o := range nodes {
-		n.queueMsg(*o, q)
-	}
+	//nodes := n.rTable.get(50)
+	/*
+		fmt.Printf("sending get_peers for %s to %d nodes\n", *th, len(nodes))
+		q := makeQuery(newTransactionID(), "get_peers", map[string]interface{}{
+			"id":        string(id),
+			"info_hash": string(*th),
+		})
+		for _, o := range nodes {
+			n.queueMsg(*o, q)
+		}
+	*/
 }
 
 func (n *Node) onAnnouncePeerQuery(rn remoteNode, msg map[string]interface{}) {
@@ -77,7 +91,7 @@ func (n *Node) onAnnouncePeerQuery(rn remoteNode, msg map[string]interface{}) {
 			n.log.Warn("sent port 0", "source", rn)
 			return
 		}
-		addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", host, newPort))
+		addr, err := net.ResolveUDPAddr(n.family, fmt.Sprintf("%s:%d", host, newPort))
 		rn = remoteNode{address: addr, id: rn.id}
 	}
 
