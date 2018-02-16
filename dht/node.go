@@ -175,6 +175,7 @@ func (n *Node) packetWriter() {
 			n.log.Warn("rate limited", "error", err)
 			continue
 		}
+		//n.log.Debug("writing packet", "dest", p.raddr.String())
 		_, err := n.conn.WriteTo(p.data, p.raddr)
 		if err != nil {
 			// TODO remove from routing or add to blacklist?
@@ -242,7 +243,7 @@ func (n *Node) processPacket(p packet) {
 
 	switch response["y"].(string) {
 	case "q":
-		n.handleRequest(p.raddr, response)
+		err = n.handleRequest(p.raddr, response)
 	case "r":
 		err = n.handleResponse(p.raddr, response)
 	case "e":
@@ -270,48 +271,49 @@ func (n *Node) queueMsg(rn remoteNode, data map[string]interface{}) error {
 }
 
 // handleRequest handles the requests received from udp.
-func (n *Node) handleRequest(addr net.Addr, m map[string]interface{}) (success bool) {
-	if err := checkKeys(m, [][]string{{"q", "string"}, {"a", "map"}}); err != nil {
-
-		//d.queueMsg(addr, makeError(t, protocolError, err.Error()))
-		return
-	}
-
-	a := m["a"].(map[string]interface{})
-
-	if err := checkKey(a, "id", "string"); err != nil {
-		//d.queueMsg(addr, makeError(t, protocolError, err.Error()))
-		return
-	}
-
-	ih, err := InfohashFromString(a["id"].(string))
+func (n *Node) handleRequest(addr net.Addr, m map[string]interface{}) error {
+	q, err := getStringKey(m, "q")
 	if err != nil {
-		n.log.Warn("invalid request", "infohash", a["id"].(string))
+		return err
+	}
+
+	a, err := getMapKey(m, "a")
+	if err != nil {
+		return err
+	}
+
+	id, err := getStringKey(a, "id")
+	if err != nil {
+		return err
+	}
+
+	ih, err := InfohashFromString(id)
+	if err != nil {
+		return err
 	}
 
 	if n.id.Equal(*ih) {
-		return
+		return nil
 	}
 
 	rn := &remoteNode{address: addr, id: *ih}
-	q := m["q"].(string)
 
 	switch q {
 	case "ping":
-		n.onPingQuery(*rn, m)
+		err = n.onPingQuery(*rn, m)
 
 	case "get_peers":
-		n.onGetPeersQuery(*rn, m)
+		err = n.onGetPeersQuery(*rn, m)
 
 	case "announce_peer":
 		n.onAnnouncePeerQuery(*rn, m)
 
 	default:
 		//n.queueMsg(addr, makeError(t, protocolError, "invalid q"))
-		return
+		return nil
 	}
 	n.rTable.add(rn)
-	return true
+	return err
 }
 
 // handleResponse handles responses received from udp.

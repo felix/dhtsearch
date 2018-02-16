@@ -78,7 +78,7 @@ func (ih Infohash) Distance(other Infohash) int {
 }
 
 func generateNeighbour(first, second Infohash) Infohash {
-	s := append(first[:10], second[10:]...)
+	s := append(second[:10], first[10:]...)
 	return Infohash(s)
 }
 

@@ -49,6 +49,18 @@ func getStringKey(data map[string]interface{}, key string) (string, error) {
 	return out, nil
 }
 
+func getIntKey(data map[string]interface{}, key string) (int, error) {
+	val, ok := data[key]
+	if !ok {
+		return 0, fmt.Errorf("krpc: missing key %s", key)
+	}
+	out, ok := val.(int)
+	if !ok {
+		return 0, fmt.Errorf("krpc: key type mismatch")
+	}
+	return out, nil
+}
+
 func getMapKey(data map[string]interface{}, key string) (map[string]interface{}, error) {
 	val, ok := data[key]
 	if !ok {
