@@ -2,25 +2,24 @@
 
 
 [[projects]]
-  name = "github.com/BurntSushi/toml"
-  packages = ["."]
-  revision = "b26d9c308763d68093482582cea63d69be07a0f0"
-  version = "v0.3.0"
-
-[[projects]]
   name = "github.com/felix/logger"
   packages = ["."]
   revision = "e63ba90ca450858e4e5a719a710370144cb7913b"
   version = "0.1.1"
 
 [[projects]]
-  branch = "master"
   name = "github.com/jackc/pgx"
   packages = [
     ".",
+    "chunkreader",
+    "internal/sanitize",
+    "pgio",
+    "pgproto3",
+    "pgtype",
     "stdlib"
   ]
-  revision = "cd16be9308d0886a1fe2b5e1bb5e0bc935cd9217"
+  revision = "da3231b0b66e2e74cdb779f1d46c5e958ba8be27"
+  version = "v3.1.0"
 
 [[projects]]
   branch = "master"
@@ -29,11 +28,29 @@
     ".",
     "reflectx"
   ]
-  revision = "d9bd385d68c068f1fabb5057e3dedcbcbb039d0f"
+  revision = "05cef0741ade10ca668982355b3f3f0bcf0ff0a8"
+
+[[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/net"
+  packages = ["context"]
+  revision = "cbe0f9307d0156177f9dd5dc85da1a31abc5f2fb"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/time"
+  packages = ["rate"]
+  revision = "6dc17368e09b0e8634d71cac8168d853e869a0c7"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "25063d396dff2d94d5732c030c9c8f85e789dc4bba4f47ca8a16e0e742372379"
+  inputs-digest = "3a93c20329f5c9baa71609787d58bcd42837e2dbe406f6686f0fd53585353484"
   solver-name = "gps-cdcl"
   solver-version = 1
