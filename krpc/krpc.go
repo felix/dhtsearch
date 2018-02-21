@@ -1,4 +1,4 @@
-package dht
+package krpc
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 
 const transIDBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-func newTransactionID() string {
+func NewTransactionID() string {
 	b := make([]byte, 2)
 	for i := range b {
 		b[i] = transIDBytes[rand.Int63()%int64(len(transIDBytes))]
@@ -19,25 +19,25 @@ func newTransactionID() string {
 }
 
 // makeQuery returns a query-formed data.
-func makeQuery(t, q string, a map[string]interface{}) map[string]interface{} {
+func MakeQuery(transaction, query string, data map[string]interface{}) map[string]interface{} {
 	return map[string]interface{}{
-		"t": t,
+		"t": transaction,
 		"y": "q",
-		"q": q,
-		"a": a,
+		"q": query,
+		"a": data,
 	}
 }
 
 // makeResponse returns a response-formed data.
-func makeResponse(t string, r map[string]interface{}) map[string]interface{} {
+func MakeResponse(transaction string, data map[string]interface{}) map[string]interface{} {
 	return map[string]interface{}{
-		"t": t,
+		"t": transaction,
 		"y": "r",
-		"r": r,
+		"r": data,
 	}
 }
 
-func getStringKey(data map[string]interface{}, key string) (string, error) {
+func GetString(data map[string]interface{}, key string) (string, error) {
 	val, ok := data[key]
 	if !ok {
 		return "", fmt.Errorf("krpc: missing key %s", key)
@@ -49,7 +49,7 @@ func getStringKey(data map[string]interface{}, key string) (string, error) {
 	return out, nil
 }
 
-func getIntKey(data map[string]interface{}, key string) (int, error) {
+func GetInt(data map[string]interface{}, key string) (int, error) {
 	val, ok := data[key]
 	if !ok {
 		return 0, fmt.Errorf("krpc: missing key %s", key)
@@ -61,7 +61,7 @@ func getIntKey(data map[string]interface{}, key string) (int, error) {
 	return out, nil
 }
 
-func getMapKey(data map[string]interface{}, key string) (map[string]interface{}, error) {
+func GetMap(data map[string]interface{}, key string) (map[string]interface{}, error) {
 	val, ok := data[key]
 	if !ok {
 		return nil, fmt.Errorf("krpc: missing key %s", key)
@@ -73,7 +73,7 @@ func getMapKey(data map[string]interface{}, key string) (map[string]interface{},
 	return out, nil
 }
 
-func getListKey(data map[string]interface{}, key string) ([]interface{}, error) {
+func GetList(data map[string]interface{}, key string) ([]interface{}, error) {
 	val, ok := data[key]
 	if !ok {
 		return nil, fmt.Errorf("krpc: missing key %s", key)
@@ -125,7 +125,7 @@ func checkKey(data map[string]interface{}, key string, t string) error {
 }
 
 // Swiped from nictuku
-func decodeCompactNodeAddr(cni string) string {
+func DecodeCompactNodeAddr(cni string) string {
 	if len(cni) == 6 {
 		return fmt.Sprintf("%d.%d.%d.%d:%d", cni[0], cni[1], cni[2], cni[3], (uint16(cni[4])<<8)|uint16(cni[5]))
 	} else if len(cni) == 18 {
@@ -136,7 +136,7 @@ func decodeCompactNodeAddr(cni string) string {
 	}
 }
 
-func encodeCompactNodeAddr(addr string) string {
+func EncodeCompactNodeAddr(addr string) string {
 	var a []uint8
 	host, port, _ := net.SplitHostPort(addr)
 	ip := net.ParseIP(host)

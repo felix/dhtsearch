@@ -1,13 +1,18 @@
 package dht
 
-import "fmt"
+import (
+	"fmt"
+	"net"
+)
 
 // Peer on DHT network
 type Peer struct {
-	Node     remoteNode
+	Addr     net.Addr
+	ID       Infohash
 	Infohash Infohash
 }
 
+// String implements fmt.Stringer
 func (p Peer) String() string {
-	return fmt.Sprintf("%s (%s)", p.Infohash, p.Node)
+	return fmt.Sprintf("%s (%s)", p.Infohash, p.Addr.String())
 }

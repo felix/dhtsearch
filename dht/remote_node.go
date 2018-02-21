@@ -6,12 +6,11 @@ import (
 )
 
 type remoteNode struct {
-	address net.Addr
-	id      Infohash
-	//lastSeen time.Time
+	addr net.Addr
+	id   Infohash
 }
 
 // String implements fmt.Stringer
 func (r remoteNode) String() string {
-	return fmt.Sprintf("%s (%s)", r.id.String(), r.address.String())
+	return fmt.Sprintf("%s (%s)", r.id.String(), r.addr.String())
 }

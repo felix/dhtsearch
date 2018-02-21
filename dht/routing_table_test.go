@@ -32,7 +32,7 @@ func TestPriorityQueue(t *testing.T) {
 			t.Errorf("failed to create infohash: %s\n", err)
 		}
 		addr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("0.0.0.0:%d", i))
-		pq.add(&remoteNode{id: *iht, address: addr})
+		pq.add(&remoteNode{id: *iht, addr: addr})
 	}
 
 	if len(pq.items) != len(pq.addresses) {

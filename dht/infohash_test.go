@@ -39,7 +39,7 @@ func TestInfohashImport(t *testing.T) {
 }
 
 func TestInfohashLength(t *testing.T) {
-	ih := randomInfoHash()
+	ih := GenInfohash()
 	if len(ih) != 20 {
 		t.Errorf("%s as string should be length 20, got %d", ih, len(ih))
 	}

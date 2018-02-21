@@ -73,10 +73,10 @@ func (k *routingTable) add(rn *remoteNode) {
 	k.Lock()
 	defer k.Unlock()
 
-	if _, ok := k.addresses[rn.address.String()]; ok {
+	if _, ok := k.addresses[rn.addr.String()]; ok {
 		return
 	}
-	k.addresses[rn.address.String()] = rn
+	k.addresses[rn.addr.String()] = rn
 
 	item := &rItem{
 		value:    rn,
@@ -88,7 +88,7 @@ func (k *routingTable) add(rn *remoteNode) {
 	if len(k.items) > k.max {
 		for i := k.max - 1; i < len(k.items); i++ {
 			old := k.items[i]
-			delete(k.addresses, old.value.address.String())
+			delete(k.addresses, old.value.addr.String())
 			heap.Remove(&k.items, i)
 		}
 	}

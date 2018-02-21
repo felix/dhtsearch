@@ -82,7 +82,7 @@ func generateNeighbour(first, second Infohash) Infohash {
 	return Infohash(s)
 }
 
-func randomInfoHash() (ih Infohash) {
+func GenInfohash() (ih Infohash) {
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 	hash := sha1.New()
 	io.WriteString(hash, time.Now().String())
