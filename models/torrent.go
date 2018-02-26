@@ -10,14 +10,13 @@ import (
 	"time"
 
 	"github.com/felix/dhtsearch/bencode"
-	"github.com/felix/dhtsearch/dht"
 	"github.com/felix/dhtsearch/krpc"
 )
 
 // Data for persistent storage
 type Torrent struct {
 	ID       int       `json:"-"`
-	InfoHash string    `json:"infohash"`
+	Infohash string    `json:"infohash"`
 	Name     string    `json:"name"`
 	Files    []File    `json:"files" db:"-"`
 	Size     int       `json:"size"`
@@ -32,20 +31,13 @@ type File struct {
 	TorrentID int    `json:"torrent_id" db:"torrent_id"`
 }
 
-type torrentStore interface {
-	saveTorrent(*Torrent) error
-	torrentsByHash(hashes dht.Infohash, offset, limit int) (*Torrent, error)
-	torrentsByName(query string, offset, limit int) ([]*Torrent, error)
-	torrentsByTags(tags []string, offset, limit int) ([]*Torrent, error)
-}
-
-func validMetadata(ih dht.Infohash, md []byte) bool {
+func InfohashMatchesMetadata(ih Infohash, md []byte) bool {
 	info := sha1.Sum(md)
 	return bytes.Equal([]byte(ih), info[:])
 }
 
-func TorrentFromMetadata(ih dht.Infohash, md []byte) (*Torrent, error) {
-	if !validMetadata(ih, md) {
+func TorrentFromMetadata(ih Infohash, md []byte) (*Torrent, error) {
+	if !InfohashMatchesMetadata(ih, md) {
 		return nil, fmt.Errorf("infohash does not match metadata")
 	}
 	info, _, err := bencode.DecodeDict(md, 0)
@@ -60,7 +52,7 @@ func TorrentFromMetadata(ih dht.Infohash, md []byte) (*Torrent, error) {
 	}
 
 	bt := Torrent{
-		InfoHash: hex.EncodeToString([]byte(ih)),
+		Infohash: hex.EncodeToString([]byte(ih)),
 		Name:     name,
 	}
 
@@ -79,7 +71,10 @@ func TorrentFromMetadata(ih dht.Infohash, md []byte) (*Torrent, error) {
 				path[j] = p.(string)
 			}
 
-			fSize := file["length"].(int)
+			fSize, err := krpc.GetInt(file, "length")
+			if err != nil {
+				return nil, err
+			}
 			bt.Files[i] = File{
 				// Assume Unix path sep?
 				Path: strings.Join(path[:], string(os.PathSeparator)),

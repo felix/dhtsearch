@@ -1,4 +1,4 @@
-package dht
+package models
 
 import (
 	"encoding/hex"

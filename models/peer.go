@@ -1,4 +1,4 @@
-package dht
+package models
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 // Peer on DHT network
 type Peer struct {
 	Addr     net.Addr
-	ID       Infohash
 	Infohash Infohash
 }
 

@@ -1,4 +1,4 @@
-package dht
+package models
 
 import (
 	"crypto/sha1"
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const ihLength = 20
+const InfohashLength = 20
 
 // Infohash is a 160 bit (20 byte) value
 type Infohash []byte
@@ -77,7 +77,7 @@ func (ih Infohash) Distance(other Infohash) int {
 	return 8*i + j
 }
 
-func generateNeighbour(first, second Infohash) Infohash {
+func GenerateNeighbour(first, second Infohash) Infohash {
 	s := append(second[:10], first[10:]...)
 	return Infohash(s)
 }
