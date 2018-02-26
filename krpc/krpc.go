@@ -8,7 +8,11 @@ import (
 	"strconv"
 )
 
-const transIDBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const (
+	transIDBytes    = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	IPv4NodeAddrLen = 26
+	IPv6NodeAddrLen = 38
+)
 
 func NewTransactionID() string {
 	b := make([]byte, 2)
@@ -54,11 +58,11 @@ func GetInt(data map[string]interface{}, key string) (int, error) {
 	if !ok {
 		return 0, fmt.Errorf("krpc: missing key %s", key)
 	}
-	out, ok := val.(int)
+	out, ok := val.(int64)
 	if !ok {
 		return 0, fmt.Errorf("krpc: key type mismatch")
 	}
-	return out, nil
+	return int(out), nil
 }
 
 func GetMap(data map[string]interface{}, key string) (map[string]interface{}, error) {
