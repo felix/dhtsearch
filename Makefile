@@ -6,9 +6,9 @@ SRC=$(shell find . -type f -name '*.go')
 build: $(BINARY)
 
 $(BINARY): $(SRC)
-	go build -ldflags "-w -s \
+	cd cmd && go build -ldflags "-w -s \
 		-X main.version=$(VERSION)" \
-		-o $(BINARY)
+		-o ../$(BINARY)
 test:
 	go test -short -coverprofile=coverage.out
 	go tool cover -html=coverage.out -o coverage.html
