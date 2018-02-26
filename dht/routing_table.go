@@ -3,6 +3,8 @@ package dht
 import (
 	"container/heap"
 	"sync"
+
+	"github.com/felix/dhtsearch/models"
 )
 
 type rItem struct {
@@ -14,14 +16,14 @@ type rItem struct {
 type priorityQueue []*rItem
 
 type routingTable struct {
-	id        Infohash
+	id        models.Infohash
 	max       int
 	items     priorityQueue
 	addresses map[string]*remoteNode
 	sync.Mutex
 }
 
-func newRoutingTable(id Infohash, max int) (*routingTable, error) {
+func newRoutingTable(id models.Infohash, max int) (*routingTable, error) {
 	k := &routingTable{
 		id:  id,
 		max: max,

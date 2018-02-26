@@ -1,12 +1,13 @@
 package dht
 
 import (
+	"github.com/felix/dhtsearch/models"
 	"github.com/felix/logger"
 )
 
 type Option func(*Node) error
 
-func SetOnAnnouncePeer(f func(Peer)) Option {
+func SetOnAnnouncePeer(f func(models.Peer)) Option {
 	return func(n *Node) error {
 		n.OnAnnouncePeer = f
 		return nil

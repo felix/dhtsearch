@@ -8,6 +8,7 @@ import (
 
 	"github.com/felix/dhtsearch/bencode"
 	"github.com/felix/dhtsearch/krpc"
+	"github.com/felix/dhtsearch/models"
 	"github.com/felix/logger"
 	"golang.org/x/time/rate"
 )
@@ -24,7 +25,7 @@ var (
 
 // Node joins the DHT network
 type Node struct {
-	id         Infohash
+	id         models.Infohash
 	family     string
 	address    string
 	port       int
@@ -38,27 +39,27 @@ type Node struct {
 	//table      routingTable
 
 	// OnAnnoucePeer is called for each peer that announces itself
-	OnAnnouncePeer func(p Peer)
+	OnAnnouncePeer func(p models.Peer)
 }
 
 // NewNode creates a new DHT node
-func NewNode(opts ...Option) (n *Node, err error) {
-	id := GenInfohash()
+func NewNode(opts ...Option) (*Node, error) {
+	var err error
+	id := models.GenInfohash()
 
-	k, err := newRoutingTable(id, 2000)
-	if err != nil {
-		n.log.Error("failed to create routing table", "error", err)
-		return nil, err
-	}
-
-	n = &Node{
+	n := &Node{
 		id:         id,
 		family:     "udp4",
 		port:       6881,
 		udpTimeout: 10,
-		rTable:     k,
 		limiter:    rate.NewLimiter(rate.Limit(100000), 2000000),
 		log:        logger.New(&logger.Options{Name: "dht"}),
+	}
+
+	n.rTable, err = newRoutingTable(id, 2000)
+	if err != nil {
+		n.log.Error("failed to create routing table", "error", err)
+		return nil, err
 	}
 
 	// Set variadic options passed
@@ -144,7 +145,7 @@ func (n *Node) makeNeighbours() {
 				// Send to all nodes
 				nodes := n.rTable.get(0)
 				for _, rn := range nodes {
-					n.findNode(rn, generateNeighbour(n.id, rn.id))
+					n.findNode(rn, models.GenerateNeighbour(n.id, rn.id))
 				}
 				n.rTable.flush()
 			}
@@ -186,8 +187,8 @@ func (n *Node) packetWriter() {
 	}
 }
 
-func (n *Node) findNode(rn *remoteNode, id Infohash) {
-	target := GenInfohash()
+func (n *Node) findNode(rn *remoteNode, id models.Infohash) {
+	target := models.GenInfohash()
 	n.sendQuery(rn, "find_node", map[string]interface{}{
 		"id":     string(id),
 		"target": string(target),
@@ -196,7 +197,7 @@ func (n *Node) findNode(rn *remoteNode, id Infohash) {
 
 // ping sends ping query to the chan.
 func (n *Node) ping(rn *remoteNode) {
-	id := generateNeighbour(n.id, rn.id)
+	id := models.GenerateNeighbour(n.id, rn.id)
 	n.sendQuery(rn, "ping", map[string]interface{}{
 		"id": string(id),
 	})
@@ -282,7 +283,7 @@ func (n *Node) handleRequest(addr net.Addr, m map[string]interface{}) error {
 		return err
 	}
 
-	ih, err := InfohashFromString(id)
+	ih, err := models.InfohashFromString(id)
 	if err != nil {
 		return err
 	}
@@ -321,7 +322,7 @@ func (n *Node) handleResponse(addr net.Addr, m map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
-	ih, err := InfohashFromString(id)
+	ih, err := models.InfohashFromString(id)
 	if err != nil {
 		return err
 	}
@@ -372,9 +373,9 @@ func (n *Node) handleError(addr net.Addr, m map[string]interface{}) error {
 
 // Process another node's response to a find_node query.
 func (n *Node) processFindNodeResults(rn remoteNode, nodeList string) {
-	nodeLength := 26
+	nodeLength := krpc.IPv4NodeAddrLen
 	if n.family == "udp6" {
-		nodeLength = 38
+		nodeLength = krpc.IPv6NodeAddrLen
 	}
 
 	if len(nodeList)%nodeLength != 0 {
@@ -386,10 +387,10 @@ func (n *Node) processFindNodeResults(rn remoteNode, nodeList string) {
 
 	// We got a byte array in groups of 26 or 38
 	for i := 0; i < len(nodeList); i += nodeLength {
-		id := nodeList[i : i+ihLength]
-		addrStr := krpc.DecodeCompactNodeAddr(nodeList[i+ihLength : i+nodeLength])
+		id := nodeList[i : i+models.InfohashLength]
+		addrStr := krpc.DecodeCompactNodeAddr(nodeList[i+models.InfohashLength : i+nodeLength])
 
-		ih, err := InfohashFromString(id)
+		ih, err := models.InfohashFromString(id)
 		if err != nil {
 			n.log.Warn("invalid infohash in node list")
 			continue

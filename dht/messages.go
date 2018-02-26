@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/felix/dhtsearch/krpc"
+	"github.com/felix/dhtsearch/models"
 )
 
 func (n *Node) onPingQuery(rn remoteNode, msg map[string]interface{}) error {
@@ -29,14 +30,14 @@ func (n *Node) onGetPeersQuery(rn remoteNode, msg map[string]interface{}) error 
 	if err != nil {
 		return err
 	}
-	th, err := InfohashFromString(torrent)
+	th, err := models.InfohashFromString(torrent)
 	if err != nil {
 		return err
 	}
-	n.log.Debug("get_peers query", "source", rn, "torrent", th)
+	//n.log.Debug("get_peers query", "source", rn, "torrent", th)
 
 	token := torrent[:2]
-	neighbour := generateNeighbour(n.id, *th)
+	neighbour := models.GenerateNeighbour(n.id, *th)
 	/*
 		nodes := n.rTable.get(8)
 		compactNS := []string{}
@@ -78,20 +79,24 @@ func (n *Node) onAnnouncePeerQuery(rn remoteNode, msg map[string]interface{}) er
 		return err
 	}
 
-	n.log.Debug("announce_peer", "source", rn)
+	//n.log.Debug("announce_peer", "source", rn)
 
-	if impliedPort, err := krpc.GetInt(a, "implied_port"); err == nil {
-		if impliedPort != 0 {
+	host, port, err := net.SplitHostPort(rn.addr.String())
+	if err != nil {
+		return err
+	}
+	if port == "0" {
+		return fmt.Errorf("ignoring port 0")
+	}
+
+	newPort, err := krpc.GetInt(a, "port")
+	if err == nil {
+		if iPort, err := krpc.GetInt(a, "implied_port"); err == nil && iPort == 0 {
 			// Use the port in the message
-			host, _, err := net.SplitHostPort(rn.addr.String())
+			addr, err := net.ResolveUDPAddr(n.family, fmt.Sprintf("%s:%d", host, newPort))
 			if err != nil {
 				return err
 			}
-			newPort := a["port"]
-			if newPort == 0 {
-				return fmt.Errorf("ignoring port 0")
-			}
-			addr, err := net.ResolveUDPAddr(n.family, fmt.Sprintf("%s:%d", host, newPort))
 			rn = remoteNode{addr: addr, id: rn.id}
 		}
 	}
@@ -102,12 +107,12 @@ func (n *Node) onAnnouncePeerQuery(rn remoteNode, msg map[string]interface{}) er
 	if err != nil {
 		return err
 	}
-	ih, err := InfohashFromString(ihStr)
+	ih, err := models.InfohashFromString(ihStr)
 	if err != nil {
 		n.log.Warn("invalid torrent", "infohash", ihStr)
 	}
 
-	p := Peer{Addr: rn.addr, ID: rn.id, Infohash: *ih}
+	p := models.Peer{Addr: rn.addr, Infohash: *ih}
 	if n.OnAnnouncePeer != nil {
 		go n.OnAnnouncePeer(p)
 	}

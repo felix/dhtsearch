@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"testing"
+
+	"github.com/felix/dhtsearch/models"
 )
 
 func TestPriorityQueue(t *testing.T) {
@@ -16,7 +18,7 @@ func TestPriorityQueue(t *testing.T) {
 		"d1c5676ae7ac98e8b19f63565905105e3c4c37a3", // distance of 159
 	}
 
-	ih, err := InfohashFromString(id)
+	ih, err := models.InfohashFromString(id)
 	if err != nil {
 		t.Errorf("failed to create infohash: %s\n", err)
 	}
@@ -27,7 +29,7 @@ func TestPriorityQueue(t *testing.T) {
 	}
 
 	for i, idt := range tests {
-		iht, err := InfohashFromString(idt)
+		iht, err := models.InfohashFromString(idt)
 		if err != nil {
 			t.Errorf("failed to create infohash: %s\n", err)
 		}
