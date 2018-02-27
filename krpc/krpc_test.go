@@ -16,13 +16,13 @@ func TestCompactNodeAddr(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		r := encodeCompactNodeAddr(tt.in)
+		r := EncodeCompactNodeAddr(tt.in)
 		out, _ := hex.DecodeString(tt.out)
 		if r != string(out) {
 			t.Errorf("encodeCompactNodeAddr(%s) => %x, expected %s", tt.in, r, tt.out)
 		}
 
-		s := decodeCompactNodeAddr(r)
+		s := DecodeCompactNodeAddr(r)
 		if s != tt.in {
 			t.Errorf("decodeCompactNodeAddr(%x) => %s, expected %s", r, s, tt.in)
 		}
