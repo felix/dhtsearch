@@ -36,7 +36,6 @@ type Node struct {
 	packetsOut chan packet
 	log        logger.Logger
 	limiter    *rate.Limiter
-	//table      routingTable
 
 	// OnAnnoucePeer is called for each peer that announces itself
 	OnAnnouncePeer func(p models.Peer)

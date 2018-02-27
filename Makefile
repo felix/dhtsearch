@@ -1,5 +1,5 @@
 
-TARGETS = linux-386 linux-amd64 linux-arm linux-arm64 darwin-amd64 windows-386 windows-amd64
+TARGETS = freebsd-amd64 linux-386 linux-amd64 linux-arm linux-arm64 darwin-amd64 windows-386 windows-amd64
 CMD = dhtsearch
 VERSION ?= $(shell git describe --tags --always)
 SRC = $(shell find . -type f -name '*.go')
@@ -16,7 +16,7 @@ build: check-env ## Build binary for current platform
 standalone : TAGS = sqlite
 
 $(BINARIES): $(SRC)
-	env GOOS=`echo $@ |cut -d'-' -f2` GOARCH=`echo $@ |cut -d'-' -f3 |cut -d'.' -f1` cd cmd && go build -o ../$@ $(LDFLAGS)
+	cd cmd && env GOOS=`echo $@ |cut -d'-' -f2` GOARCH=`echo $@ |cut -d'-' -f3 |cut -d'.' -f1` go build -o ../$@ $(LDFLAGS)
 
 test: ## Run tests and create coverage report
 	go test -short -coverprofile=coverage.out ./...
@@ -27,6 +27,7 @@ lint:
 
 clean: check-env ## Clean up temp files and binaries
 	rm -f $(BINARIES)
+	rm -f $(CMD)
 	rm -rf coverage*
 
 check-env:
