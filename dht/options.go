@@ -3,6 +3,7 @@ package dht
 import (
 	"github.com/felix/dhtsearch/models"
 	"github.com/felix/logger"
+	"github.com/hashicorp/golang-lru"
 )
 
 type Option func(*Node) error
@@ -53,5 +54,13 @@ func SetLogger(l logger.Logger) Option {
 	return func(n *Node) error {
 		n.log = l
 		return nil
+	}
+}
+
+// SetBlacklistSize sets the size of the node blacklist
+func SetBlacklistSize(s int) Option {
+	return func(n *Node) (err error) {
+		n.blacklist, err = lru.NewARC(s)
+		return err
 	}
 }

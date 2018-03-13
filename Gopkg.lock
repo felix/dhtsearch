@@ -8,6 +8,15 @@
   version = "0.1.1"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/hashicorp/golang-lru"
+  packages = [
+    ".",
+    "simplelru"
+  ]
+  revision = "0fb14efe8c47ae851c0034ed7a448854d3d34cf3"
+
+[[projects]]
   name = "github.com/jackc/pgx"
   packages = [
     ".",
@@ -15,20 +24,10 @@
     "internal/sanitize",
     "pgio",
     "pgproto3",
-    "pgtype",
-    "stdlib"
+    "pgtype"
   ]
   revision = "da3231b0b66e2e74cdb779f1d46c5e958ba8be27"
   version = "v3.1.0"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/jmoiron/sqlx"
-  packages = [
-    ".",
-    "reflectx"
-  ]
-  revision = "05cef0741ade10ca668982355b3f3f0bcf0ff0a8"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -51,6 +50,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "3a93c20329f5c9baa71609787d58bcd42837e2dbe406f6686f0fd53585353484"
+  inputs-digest = "34c16759f6131880df1acf05556ccb8429da1b15ddfb5a6676b55d3a5beac5c8"
   solver-name = "gps-cdcl"
   solver-version = 1

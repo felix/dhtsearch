@@ -10,6 +10,7 @@ import (
 	"github.com/felix/dhtsearch/krpc"
 	"github.com/felix/dhtsearch/models"
 	"github.com/felix/logger"
+	"github.com/hashicorp/golang-lru"
 	"golang.org/x/time/rate"
 )
 
@@ -36,6 +37,7 @@ type Node struct {
 	packetsOut chan packet
 	log        logger.Logger
 	limiter    *rate.Limiter
+	blacklist  *lru.ARCCache
 
 	// OnAnnoucePeer is called for each peer that announces itself
 	OnAnnouncePeer func(p models.Peer)
@@ -64,6 +66,13 @@ func NewNode(opts ...Option) (*Node, error) {
 	// Set variadic options passed
 	for _, option := range opts {
 		err = option(n)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if n.blacklist == nil {
+		n.blacklist, err = lru.NewARC(1000)
 		if err != nil {
 			return nil, err
 		}
@@ -179,7 +188,7 @@ func (n *Node) packetWriter() {
 		//n.log.Debug("writing packet", "dest", p.raddr.String())
 		_, err := n.conn.WriteTo(p.data, p.raddr)
 		if err != nil {
-			// TODO remove from routing or add to blacklist?
+			n.blacklist.Add(p.raddr.String(), true)
 			// TODO reduce limit
 			n.log.Warn("failed to write packet", "error", err)
 		}
@@ -235,6 +244,10 @@ func (n *Node) processPacket(p packet) error {
 		return err
 	}
 
+	if _, black := n.blacklist.Get(p.raddr.String()); black {
+		return fmt.Errorf("blacklisted", "address", p.raddr.String())
+	}
+
 	switch y {
 	case "q":
 		err = n.handleRequest(p.raddr, response)
@@ -243,11 +256,11 @@ func (n *Node) processPacket(p packet) error {
 	case "e":
 		err = n.handleError(p.raddr, response)
 	default:
-		n.log.Warn("missing request type")
-		return nil
+		err = fmt.Errorf("missing request type")
 	}
 	if err != nil {
 		n.log.Warn("failed to process packet", "error", err)
+		n.blacklist.Add(p.raddr.String(), true)
 	}
 	return err
 }
