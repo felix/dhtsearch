@@ -37,6 +37,11 @@ func InfohashFromString(s string) (*Infohash, error) {
 func (ih Infohash) String() string {
 	return hex.EncodeToString(ih)
 }
+
+func (ih Infohash) Bytes() []byte {
+	return []byte(ih)
+}
+
 func (ih Infohash) Valid() bool {
 	// TODO
 	return len(ih) == 20

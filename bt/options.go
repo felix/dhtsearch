@@ -7,10 +7,18 @@ import (
 
 type Option func(*Worker) error
 
-// SetNewTorrent sets the callback
+// SetOnNewTorrent sets the callback
 func SetOnNewTorrent(f func(models.Torrent)) Option {
 	return func(w *Worker) error {
 		w.OnNewTorrent = f
+		return nil
+	}
+}
+
+// SetOnBadPeer sets the callback
+func SetOnBadPeer(f func(models.Peer)) Option {
+	return func(w *Worker) error {
+		w.OnBadPeer = f
 		return nil
 	}
 }

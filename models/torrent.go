@@ -3,7 +3,6 @@ package models
 import (
 	"bytes"
 	"crypto/sha1"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"strings"
@@ -16,11 +15,12 @@ import (
 // Data for persistent storage
 type Torrent struct {
 	ID       int       `json:"-"`
-	Infohash string    `json:"infohash"`
+	Infohash Infohash  `json:"infohash"`
 	Name     string    `json:"name"`
 	Files    []File    `json:"files" db:"-"`
 	Size     int       `json:"size"`
-	Seen     time.Time `json:"seen"`
+	Updated  time.Time `json:"updated"`
+	Created  time.Time `json:"created"`
 	Tags     []string  `json:"tags" db:"-"`
 }
 
@@ -52,7 +52,7 @@ func TorrentFromMetadata(ih Infohash, md []byte) (*Torrent, error) {
 	}
 
 	bt := Torrent{
-		Infohash: hex.EncodeToString([]byte(ih)),
+		Infohash: ih,
 		Name:     name,
 	}
 

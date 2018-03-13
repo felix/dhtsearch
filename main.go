@@ -63,9 +63,6 @@ func main() {
 		}
 	}
 
-	// Filter torrents
-	filteredPeers := make(chan peer)
-
 	// Create BT node
 	bt := &btClient{}
 	bt.log = log.Named("bt")
@@ -89,34 +86,8 @@ func main() {
 	}
 
 	// Simple cache of most recent
-	cache := make(map[string]bool)
 	var p peer
 	var t Torrent
-
-	// Filter peers
-	go func() {
-		for {
-			select {
-			case p = <-peers:
-				if ok := cache[p.id]; ok {
-					peersSkipped.Add(1)
-					continue
-				}
-				peersAnnounced.Add(1)
-				if len(cache) > Config.Advanced.PeerCacheSize {
-					fmt.Printf("Flushing peer cache\n")
-					cache = make(map[string]bool)
-				}
-				cache[p.id] = true
-				if torrentExists(p.id) {
-					peersSkipped.Add(1)
-					continue
-				}
-				filteredPeers <- p
-				dhtCachedPeers.Set(int64(len(cache)))
-			}
-		}
-	}()
 
 	for {
 		select {
@@ -148,7 +119,7 @@ func main() {
 				continue
 			}
 			if !Config.Quiet {
-				fmt.Printf("Torrrent added, length: %d, name: %q, tags: %s, url: magnet:?xt=urn:btih:%s\n", length, t.Name, t.Tags, t.InfoHash)
+				fmt.Printf("Torrrent added, length: %d, name: %q, tags: %s, url: magnet:?xt=urn:btih:%s\n", length, t.Name, t.Tags, t.Infohash)
 			}
 			torrentsSaved.Add(1)
 			torrentsTotal.Add(1)

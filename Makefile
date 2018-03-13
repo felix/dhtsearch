@@ -8,14 +8,16 @@ BINARIES = $(patsubst %,$(CMD)-%-v$(VERSION), $(TARGETS))
 
 .DEFAULT_GOAL := help
 
-release: check-env $(BINARIES) ## Build all binaries
+release: $(BINARIES) ## Build all binaries
 
-build: check-env ## Build binary for current platform
+build: $(CMD) ## Build binary for current platform
+
+$(CMD): check-env $(SRC)
 	cd cmd && go build -o ../$(CMD) $(LDFLAGS)
 
 standalone : TAGS = sqlite
 
-$(BINARIES): $(SRC)
+$(BINARIES): check-env $(SRC)
 	cd cmd && env GOOS=`echo $@ |cut -d'-' -f2` GOARCH=`echo $@ |cut -d'-' -f3 |cut -d'.' -f1` go build -o ../$@ $(LDFLAGS)
 
 test: ## Run tests and create coverage report
@@ -38,4 +40,4 @@ endif
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) |sort |awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: help install build test lint clean
+.PHONY: help install test lint clean

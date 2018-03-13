@@ -52,6 +52,7 @@ type Worker struct {
 	family       string
 	tcpTimeout   int
 	OnNewTorrent func(t models.Torrent)
+	OnBadPeer    func(p models.Peer)
 	log          logger.Logger
 }
 
@@ -84,16 +85,19 @@ func (bt *Worker) Run() error {
 			bt.log.Debug("worker got work", "peer", p)
 			md, err := bt.fetchMetadata(p)
 			if err != nil {
-				bt.log.Debug("failed to fetch metadata", "error", err)
+				//bt.log.Warn("failed to fetch metadata", "error", err)
+				if bt.OnBadPeer != nil {
+					bt.OnBadPeer(p)
+				}
 				continue
 			}
 			t, err := models.TorrentFromMetadata(p.Infohash, md)
 			if err != nil {
-				bt.log.Debug("failed to load torrent", "error", err)
+				bt.log.Warn("failed to load torrent", "error", err)
 				continue
 			}
 			if bt.OnNewTorrent != nil {
-				go bt.OnNewTorrent(*t)
+				bt.OnNewTorrent(*t)
 			}
 		}
 	}
@@ -115,9 +119,9 @@ func (bt *Worker) fetchMetadata(p models.Peer) (out []byte, err error) {
 		recover()
 	}()
 
-	ll := bt.log.WithFields("address", p.Addr.String())
+	//ll := bt.log.WithFields("address", p.Addr.String())
 
-	ll.Debug("connecting")
+	//ll.Debug("connecting")
 	dial, err := net.DialTimeout("tcp", p.Addr.String(), time.Second*15)
 	if err != nil {
 		return out, err
@@ -126,7 +130,7 @@ func (bt *Worker) fetchMetadata(p models.Peer) (out []byte, err error) {
 	conn := dial.(*net.TCPConn)
 	conn.SetLinger(0)
 	defer conn.Close()
-	ll.Debug("dialed")
+	//ll.Debug("dialed")
 
 	data := bytes.NewBuffer(nil)
 	data.Grow(BlockSize)
@@ -134,26 +138,26 @@ func (bt *Worker) fetchMetadata(p models.Peer) (out []byte, err error) {
 	ih := models.GenInfohash()
 
 	// TCP handshake
-	ll.Debug("sending handshake")
+	//ll.Debug("sending handshake")
 	_, err = sendHandshake(conn, p.Infohash, ih)
 	if err != nil {
 		return nil, err
 	}
 
 	// Handle the handshake response
-	ll.Debug("handling handshake response")
+	//ll.Debug("handling handshake response")
 	err = read(conn, 68, data)
 	if err != nil {
 		return nil, err
 	}
 	next := data.Next(68)
-	ll.Debug("got next data")
+	//ll.Debug("got next data")
 	if !(bytes.Equal(handshakePrefix[:20], next[:20]) && next[25]&0x10 != 0) {
-		ll.Debug("next data does not match", "next", next)
+		//ll.Debug("next data does not match", "next", next)
 		return nil, errors.New("invalid handshake response")
 	}
 
-	ll.Debug("sending ext handshake")
+	//ll.Debug("sending ext handshake")
 	_, err = sendExtHandshake(conn)
 	if err != nil {
 		return nil, err

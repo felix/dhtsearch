@@ -30,6 +30,15 @@ func TestInfohashImport(t *testing.T) {
 			if !ih.Equal(ih2) {
 				t.Errorf("expected %s to equal %s", ih, ih2)
 			}
+			if ih.String() != tt.str {
+				t.Errorf("expected ih.String() to equal %s, got %s", tt.str, ih.String())
+			}
+			byt := ih.Bytes()
+			for i := range byt {
+				if byt[i] != []byte(tt.str)[i] {
+					t.Errorf("expected ih.Bytes() to equal %s, got %s", []byte(tt.str), ih.Bytes())
+				}
+			}
 		} else {
 			if err == nil {
 				t.Errorf("FromString should have failed for %s", tt.str)
