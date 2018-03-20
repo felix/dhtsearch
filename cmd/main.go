@@ -79,11 +79,11 @@ func main() {
 	log.Debug("debugging")
 
 	store, err := db.NewStore(dsn)
-	defer store.Close()
 	if err != nil {
 		log.Error("failed to connect store", "error", err)
 		os.Exit(1)
 	}
+	defer store.Close()
 
 	createTagRegexps()
 
@@ -144,7 +144,7 @@ func startDHTNodes(s models.PeerStore) {
 func processPendingPeers(s models.InfohashStore) {
 	log.Debug("processing pending peers")
 	for {
-		peers, err := s.PendingInfohashes(1)
+		peers, err := s.PendingInfohashes(10)
 		if err != nil {
 			log.Debug("failed to get pending peer", "error", err)
 			time.Sleep(time.Second * 1)
