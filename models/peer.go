@@ -10,8 +10,8 @@ import (
 type Peer struct {
 	Addr     net.Addr  `db:"address"`
 	Infohash Infohash  `db:"infohash"`
-	Updated  time.Time `json:"updated"`
-	Created  time.Time `json:"created"`
+	Created  time.Time `db:"created" json:"created"`
+	Updated  time.Time `db:"updated" json:"updated"`
 }
 
 // String implements fmt.Stringer

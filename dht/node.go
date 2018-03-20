@@ -40,7 +40,9 @@ type Node struct {
 	blacklist  *lru.ARCCache
 
 	// OnAnnoucePeer is called for each peer that announces itself
-	OnAnnouncePeer func(p models.Peer)
+	OnAnnouncePeer func(models.Peer)
+	// OnBadPeer is called for each bad peer
+	OnBadPeer func(models.Peer)
 }
 
 // NewNode creates a new DHT node
@@ -191,6 +193,10 @@ func (n *Node) packetWriter() {
 			n.blacklist.Add(p.raddr.String(), true)
 			// TODO reduce limit
 			n.log.Warn("failed to write packet", "error", err)
+			if n.OnBadPeer != nil {
+				peer := models.Peer{Addr: p.raddr}
+				go n.OnBadPeer(peer)
+			}
 		}
 	}
 }
@@ -245,7 +251,7 @@ func (n *Node) processPacket(p packet) error {
 	}
 
 	if _, black := n.blacklist.Get(p.raddr.String()); black {
-		return fmt.Errorf("blacklisted", "address", p.raddr.String())
+		return fmt.Errorf("blacklisted: %s", p.raddr.String())
 	}
 
 	switch y {

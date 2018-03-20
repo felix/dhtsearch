@@ -14,6 +14,7 @@ import (
 	"github.com/felix/dhtsearch/dht"
 	"github.com/felix/dhtsearch/models"
 	"github.com/felix/logger"
+	"github.com/hashicorp/golang-lru"
 )
 
 var (
@@ -43,7 +44,7 @@ var (
 var (
 	dsn           string
 	ihBlacklist   map[string]bool
-	peerBlacklist map[string]bool
+	peerBlacklist *lru.ARCCache
 )
 
 func main() {
@@ -88,7 +89,11 @@ func main() {
 	createTagRegexps()
 
 	ihBlacklist = make(map[string]bool)
-	peerBlacklist = make(map[string]bool)
+	peerBlacklist, err = lru.NewARC(1000)
+	if err != nil {
+		log.Error("failed to create blacklist", "error", err)
+		os.Exit(1)
+	}
 	// TODO read in existing blacklist
 	// TODO populate bloom filter
 
@@ -115,13 +120,10 @@ func startDHTNodes(s models.PeerStore) {
 			dht.SetLogger(log.Named("dht")),
 			dht.SetPort(port+i),
 			dht.SetIPv6(ipv6),
+			dht.SetBlacklist(peerBlacklist),
 			dht.SetOnAnnouncePeer(func(p models.Peer) {
 				if black := ihBlacklist[p.Infohash.String()]; black {
 					log.Debug("ignoring blacklisted infohash", "peer", p)
-					return
-				}
-				if black := peerBlacklist[p.Addr.String()]; black {
-					log.Debug("ignoring blacklisted peer", "peer", p)
 					return
 				}
 				log.Debug("peer announce", "peer", p)
@@ -130,28 +132,33 @@ func startDHTNodes(s models.PeerStore) {
 					log.Error("failed to save peer", "error", err)
 				}
 			}),
+			dht.SetOnBadPeer(func(p models.Peer) {
+				err := s.RemovePeer(&p)
+				if err != nil {
+					log.Error("failed to remove peer", "error", err)
+				}
+			}),
 		)
 		if err != nil {
 			log.Error("failed to create node", "error", err)
-			//return nodes, err
+			continue
 		}
 		go dht.Run()
 		nodes[i] = dht
 	}
-	//return nodes, err
 }
 
 func processPendingPeers(s models.InfohashStore) {
 	log.Debug("processing pending peers")
 	for {
-		peers, err := s.PendingInfohashes(10)
+		peers, err := s.PendingInfohashes(100)
 		if err != nil {
-			log.Debug("failed to get pending peer", "error", err)
+			log.Warn("failed to get pending peer", "error", err)
 			time.Sleep(time.Second * 1)
 			continue
 		}
 		for _, p := range peers {
-			//log.Debug("pending peer retrieved", "peer", *p)
+			log.Debug("pending peer retrieved", "peer", *p)
 			select {
 			case w := <-pool:
 				//log.Debug("assigning peer to bt worker")

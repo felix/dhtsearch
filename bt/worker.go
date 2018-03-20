@@ -85,7 +85,7 @@ func (bt *Worker) Run() error {
 			bt.log.Debug("worker got work", "peer", p)
 			md, err := bt.fetchMetadata(p)
 			if err != nil {
-				//bt.log.Warn("failed to fetch metadata", "error", err)
+				bt.log.Debug("failed to fetch metadata", "error", err)
 				if bt.OnBadPeer != nil {
 					bt.OnBadPeer(p)
 				}

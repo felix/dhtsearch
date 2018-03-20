@@ -14,12 +14,11 @@ type torrentSearcher interface {
 
 type PeerStore interface {
 	SavePeer(*Peer) error
+	RemovePeer(*Peer) error
 }
 
 type TorrentStore interface {
 	SaveTorrent(*Torrent) error
-	// TODO
-	RemovePeer(*Peer) error
 }
 
 type InfohashStore interface {

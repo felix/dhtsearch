@@ -276,23 +276,19 @@ const (
 	) as sub
 	where sub.id = torrents.id`
 
-	sqlSelectPendingInfohashes = `with get_pending as (
-		select p.id
-		from peers p
-		join peers_torrents pt on p.id = pt.peer_id
-		join torrents t on pt.torrent_id = t.id
+	sqlSelectPendingInfohashes = `with get_order as (
+		select t.id as torrent_id, min(pt.peer_id) as peer_id, count(pt.peer_id) as c
+		from torrents t
+		join peers_torrents pt on pt.torrent_id = t.id
 		where t.name is null
-		order by p.updated asc
-		limit $1 for update
-	), stamp_peer as (
-		update peers set updated = now()
-		where id in (select id from get_pending)
-	) select
-	p.address, t.infohash
-	from peers p
-	join peers_torrents pt on p.id = pt.peer_id
-	join torrents t on pt.torrent_id = t.id
-	where p.id in (select id from get_pending)`
+		group by t.id
+		-- order by c desc
+		order by t.updated desc
+		limit $1
+	) select p.address, t.infohash
+	from get_order go
+	join torrents t on t.id = go.torrent_id
+	join peers p on p.id = go.peer_id`
 
 	sqlSearchTorrents = `select
 	t.id, t.infohash, t.name, t.size, t.updated

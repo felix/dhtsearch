@@ -15,6 +15,13 @@ func SetOnAnnouncePeer(f func(models.Peer)) Option {
 	}
 }
 
+func SetOnBadPeer(f func(models.Peer)) Option {
+	return func(n *Node) error {
+		n.OnBadPeer = f
+		return nil
+	}
+}
+
 // SetAddress sets the IP address to listen on
 func SetAddress(ip string) Option {
 	return func(n *Node) error {
@@ -57,10 +64,10 @@ func SetLogger(l logger.Logger) Option {
 	}
 }
 
-// SetBlacklistSize sets the size of the node blacklist
-func SetBlacklistSize(s int) Option {
+// SetBlacklist sets the size of the node blacklist
+func SetBlacklist(bl *lru.ARCCache) Option {
 	return func(n *Node) (err error) {
-		n.blacklist, err = lru.NewARC(s)
+		n.blacklist = bl
 		return err
 	}
 }
