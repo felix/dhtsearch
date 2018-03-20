@@ -101,7 +101,7 @@ func main() {
 	for {
 		select {
 		case <-time.After(300 * time.Second):
-			fmt.Println("mark")
+			log.Info("---- mark ----")
 		}
 	}
 }
