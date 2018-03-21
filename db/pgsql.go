@@ -104,6 +104,11 @@ func (s *Store) SaveTorrent(t *models.Torrent) error {
 	return tx.Commit()
 }
 
+func (s *Store) RemoveTorrent(t *models.Torrent) (err error) {
+	_, err = s.Exec(sqlRemoveTorrent, t.Infohash.Bytes())
+	return err
+}
+
 // SavePeer implements torrentStore
 func (s *Store) SavePeer(p *models.Peer) (err error) {
 	_, err = s.Exec(sqlInsertPeer, p.Addr.String(), p.Infohash.Bytes())
@@ -237,6 +242,9 @@ const (
 	size = $3,
 	updated = now()
 	returning id`
+
+	sqlRemoveTorrent = `delete from torrents
+	where infohash = $1`
 
 	// peer.address
 	// torrent.infohash
