@@ -398,6 +398,7 @@ func (n *Node) processFindNodeResults(rn remoteNode, nodeList string) {
 
 	if len(nodeList)%nodeLength != 0 {
 		n.log.Error("node list is wrong length", "length", len(nodeList))
+		n.blacklist.Add(rn.addr.String(), true)
 		return
 	}
 
