@@ -41,14 +41,6 @@ func SetIPv6(b bool) Option {
 	}
 }
 
-// SetUDPTimeout sets the number of seconds to wait for UDP connections
-func SetTCPTimeout(s int) Option {
-	return func(w *Worker) error {
-		w.tcpTimeout = s
-		return nil
-	}
-}
-
 // SetLogger sets the logger
 func SetLogger(l logger.Logger) Option {
 	return func(w *Worker) error {

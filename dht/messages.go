@@ -79,7 +79,7 @@ func (n *Node) onAnnouncePeerQuery(rn remoteNode, msg map[string]interface{}) er
 		return err
 	}
 
-	//n.log.Debug("announce_peer", "source", rn)
+	n.log.Debug("announce_peer", "source", rn)
 
 	host, port, err := net.SplitHostPort(rn.addr.String())
 	if err != nil {
@@ -87,6 +87,15 @@ func (n *Node) onAnnouncePeerQuery(rn remoteNode, msg map[string]interface{}) er
 	}
 	if port == "0" {
 		return fmt.Errorf("ignoring port 0")
+	}
+
+	ihStr, err := krpc.GetString(a, "info_hash")
+	if err != nil {
+		return err
+	}
+	ih, err := models.InfohashFromString(ihStr)
+	if err != nil {
+		return fmt.Errorf("invalid torrent: %s", err)
 	}
 
 	newPort, err := krpc.GetInt(a, "port")
@@ -97,20 +106,12 @@ func (n *Node) onAnnouncePeerQuery(rn remoteNode, msg map[string]interface{}) er
 			if err != nil {
 				return err
 			}
+			n.log.Debug("implied port", "infohash", ih, "original", rn.addr.String(), "new", addr.String())
 			rn = remoteNode{addr: addr, id: rn.id}
 		}
 	}
 
 	// TODO do we reply?
-
-	ihStr, err := krpc.GetString(a, "info_hash")
-	if err != nil {
-		return err
-	}
-	ih, err := models.InfohashFromString(ihStr)
-	if err != nil {
-		n.log.Warn("invalid torrent", "infohash", ihStr)
-	}
 
 	p := models.Peer{Addr: rn.addr, Infohash: *ih}
 	if n.OnAnnouncePeer != nil {

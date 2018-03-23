@@ -17,11 +17,6 @@ import (
 )
 
 const (
-	TCPTimeout = 5
-	UDPTimeout = 5
-)
-
-const (
 	// MsgRequest marks a request message type
 	MsgRequest = iota
 	// MsgData marks a data message type
@@ -39,6 +34,8 @@ const (
 	MaxMetadataSize = BlockSize * 1000
 	// HandshakeBit represents handshake bit
 	HandshakeBit = 0
+	// TCPTimeout for BT connections
+	TCPTimeout = 5
 )
 
 var handshakePrefix = []byte{
@@ -50,7 +47,6 @@ type Worker struct {
 	pool         chan chan models.Peer
 	port         int
 	family       string
-	tcpTimeout   int
 	OnNewTorrent func(t models.Torrent)
 	OnBadPeer    func(p models.Peer)
 	log          logger.Logger
