@@ -85,7 +85,7 @@ func (s *Store) SaveTorrent(t *models.Torrent) error {
 
 	var torrentID int64
 	var res sql.Result
-	res, err = tx.Stmt(s.stmts["insertTorrent"]).Exec(t.Name, t.Infohash, t.Size)
+	res, err = tx.Stmt(s.stmts["insertTorrent"]).Exec(t.Name, t.Infohash.Bytes(), t.Size)
 	if err != nil {
 		return fmt.Errorf("insertTorrent: %s", err)
 	}
@@ -95,7 +95,13 @@ func (s *Store) SaveTorrent(t *models.Torrent) error {
 
 	// Write tags
 	for _, tag := range t.Tags {
-		tagID, err := s.SaveTag(tag)
+		var tagID int64
+
+		res, err = tx.Stmt(s.stmts["insertTag"]).Exec(tag)
+		if err != nil {
+			return fmt.Errorf("saveTag: %s", err)
+		}
+		tagID, err = res.LastInsertId()
 		if err != nil {
 			return fmt.Errorf("saveTag: %s", err)
 		}
