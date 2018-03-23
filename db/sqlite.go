@@ -464,7 +464,7 @@ func (s *Store) prepareStatements() error {
 
 const sqliteSchema = `create table if not exists torrents (
 	id integer primary key,
-	infohash blob unique,
+	infohash blob not null unique,
 	size bigint,
 	name text,
 	created timestamp with time zone,
@@ -505,7 +505,7 @@ create index tags_torrents_tag_idx on tags_torrents (tag_id);
 create index tags_torrents_torrent_idx on tags_torrents (torrent_id);
 create table if not exists peers (
 	id integer primary key,
-	address character varying(50),
+	address character varying(50) not null unique,
 	created timestamp with time zone,
 	updated timestamp with time zone
 );
