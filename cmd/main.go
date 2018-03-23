@@ -15,6 +15,7 @@ import (
 	"github.com/felix/dhtsearch/models"
 	"github.com/felix/logger"
 	"github.com/hashicorp/golang-lru"
+	//"github.com/pkg/profile"
 )
 
 var (
@@ -43,11 +44,12 @@ var (
 // Store vars
 var (
 	dsn           string
-	ihBlacklist   map[string]bool
+	ihBlacklist   *lru.ARCCache
 	peerBlacklist *lru.ARCCache
 )
 
 func main() {
+	//defer profile.Start(profile.MemProfile).Stop()
 	flag.IntVar(&port, "port", 6881, "listen port (and first for multiple nodes")
 	flag.BoolVar(&debug, "debug", false, "show debug output")
 	flag.BoolVar(&ipv6, "6", false, "listen on IPv6 also")
@@ -88,7 +90,11 @@ func main() {
 
 	createTagRegexps()
 
-	ihBlacklist = make(map[string]bool)
+	ihBlacklist, err = lru.NewARC(1000)
+	if err != nil {
+		log.Error("failed to create infohash blacklist", "error", err)
+		os.Exit(1)
+	}
 	peerBlacklist, err = lru.NewARC(1000)
 	if err != nil {
 		log.Error("failed to create blacklist", "error", err)
@@ -122,11 +128,11 @@ func startDHTNodes(s models.PeerStore) {
 			dht.SetIPv6(ipv6),
 			dht.SetBlacklist(peerBlacklist),
 			dht.SetOnAnnouncePeer(func(p models.Peer) {
-				if black := ihBlacklist[p.Infohash.String()]; black {
+				if _, black := ihBlacklist.Get(p.Infohash.String()); black {
 					log.Debug("ignoring blacklisted infohash", "peer", p)
 					return
 				}
-				log.Debug("peer announce", "peer", p)
+				//log.Debug("peer announce", "peer", p)
 				err := s.SavePeer(&p)
 				if err != nil {
 					log.Error("failed to save peer", "error", err)
@@ -151,7 +157,7 @@ func startDHTNodes(s models.PeerStore) {
 func processPendingPeers(s models.InfohashStore) {
 	log.Debug("processing pending peers")
 	for {
-		peers, err := s.PendingInfohashes(100)
+		peers, err := s.PendingInfohashes(10)
 		if err != nil {
 			log.Warn("failed to get pending peer", "error", err)
 			time.Sleep(time.Second * 1)
@@ -180,7 +186,7 @@ func startBTWorkers(s models.TorrentStore) {
 			for _, tg := range tags {
 				if skipTag == tg {
 					log.Debug("skipping torrent", "infohash", t.Infohash, "tags", tags)
-					ihBlacklist[t.Infohash.String()] = true
+					ihBlacklist.Add(t.Infohash.String(), true)
 					return
 				}
 			}
@@ -190,20 +196,20 @@ func startBTWorkers(s models.TorrentStore) {
 		err := s.SaveTorrent(&t)
 		if err != nil {
 			log.Error("failed to save torrent", "error", err)
+			ihBlacklist.Add(t.Infohash.String(), true)
+			s.RemoveTorrent(&t)
 		}
 		log.Info("torrent added", "name", t.Name, "size", t.Size, "tags", t.Tags)
 	}
 
-	/*
-		onBadPeer := func(p models.Peer) {
-			log.Debug("removing peer", "peer", p)
-			err := s.RemovePeer(&p)
-			if err != nil {
-				log.Error("failed to remove peer", "peer", p, "error", err)
-			}
-			peerBlacklist[p.Addr.String()] = true
+	onBadPeer := func(p models.Peer) {
+		log.Debug("removing peer", "peer", p)
+		err := s.RemovePeer(&p)
+		if err != nil {
+			log.Error("failed to remove peer", "peer", p, "error", err)
 		}
-	*/
+		peerBlacklist.Add(p.Addr.String(), true)
+	}
 
 	for i := 0; i < btNodes; i++ {
 		w, err := bt.NewWorker(
@@ -212,7 +218,7 @@ func startBTWorkers(s models.TorrentStore) {
 			bt.SetPort(port+i),
 			bt.SetIPv6(ipv6),
 			bt.SetOnNewTorrent(onNewTorrent),
-			//bt.SetOnBadPeer(onBadPeer),
+			bt.SetOnBadPeer(onBadPeer),
 		)
 		if err != nil {
 			log.Error("failed to create bt worker", "error", err)

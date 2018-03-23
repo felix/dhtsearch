@@ -20,6 +20,7 @@ type PeerStore interface {
 type TorrentStore interface {
 	SaveTorrent(*Torrent) error
 	RemoveTorrent(*Torrent) error
+	RemovePeer(*Peer) error
 }
 
 type InfohashStore interface {
