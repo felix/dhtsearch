@@ -187,6 +187,7 @@ func startBTWorkers(s models.TorrentStore) {
 				if skipTag == tg {
 					log.Debug("skipping torrent", "infohash", t.Infohash, "tags", tags)
 					ihBlacklist.Add(t.Infohash.String(), true)
+					s.RemoveTorrent(&t)
 					return
 				}
 			}
