@@ -126,7 +126,7 @@ func (s *Store) RemoveTorrent(t *models.Torrent) (err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	_, err = s.stmts["removeTorrent"].Exec(t.Infohash.Bytes())
+	_, err = s.stmts["removeTorrent"].Exec(t.Infohash)
 	return fmt.Errorf("removeTorrent: %s", err)
 }
 
@@ -152,7 +152,7 @@ func (s *Store) SavePeer(p *models.Peer) (err error) {
 		return fmt.Errorf("savePeer: %s", err)
 	}
 
-	if res, err = tx.Stmt(s.stmts["insertTorrent"]).Exec(nil, p.Infohash.Bytes(), 0); err != nil {
+	if res, err = tx.Stmt(s.stmts["insertTorrent"]).Exec(nil, p.Infohash, 0); err != nil {
 		return fmt.Errorf("savePeer: %s", err)
 	}
 	if torrentID, err = res.LastInsertId(); err != nil {
@@ -343,19 +343,12 @@ func (s *Store) prepareStatements() error {
 	}
 
 	if s.stmts["selectPendingInfohashes"], err = s.conn.Prepare(
-		`with get_order as (
-			select t.id as torrent_id, min(pt.peer_id) as peer_id, count(pt.peer_id) as c
-			from torrents t
-			join peers_torrents pt on pt.torrent_id = t.id
-			where t.name is null
-			group by t.id
-			-- order by c desc
-			order by t.updated desc
-			limit ?
-		) select p.address, t.infohash
-		from get_order go
-		join torrents t on t.id = go.torrent_id
-		join peers p on p.id = go.peer_id`,
+		`select max(p.address) as address, t.infohash
+		from torrents t
+		join peers_torrents pt on pt.torrent_id = t.id
+		join peers p on p.id = pt.peer_id
+		where t.name is null
+		group by t.infohash`,
 	); err != nil {
 		return err
 	}
@@ -369,7 +362,7 @@ func (s *Store) prepareStatements() error {
 	}
 
 	if s.stmts["insertPeer"], err = s.conn.Prepare(
-		`insert or replace into peers
+		`insert or ignore into peers
 		(address, created, updated)
 		values
 		(?, date('now'), date('now'))`,
