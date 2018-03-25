@@ -470,7 +470,6 @@ const sqliteSchema = `create table if not exists torrents (
 	updated timestamp with time zone,
 	tsv tsvector
 );
-create unique index torrents_infohash_idx on torrents (infohash);
 create virtual table torrents_fts using fts5(
 	name, content='torrents', content_rowid='id',
 	tokenize="porter unicode61 separators ' !""#$%&''()*+,-./:;<=>?@[\]^_` + "`" + `{|}~'"
@@ -510,7 +509,6 @@ create table if not exists peers (
 	created timestamp with time zone,
 	updated timestamp with time zone
 );
-create unique index peers_address_idx on peers (address);
 create table if not exists peers_torrents (
 	peer_id integer not null references peers on delete cascade,
 	torrent_id integer not null references torrents on delete cascade,
