@@ -6,9 +6,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/felix/dhtsearch/bencode"
 	"github.com/felix/dhtsearch/krpc"
 	"github.com/felix/dhtsearch/models"
+	"github.com/felix/go-bencode"
 	"github.com/felix/logger"
 	"github.com/hashicorp/golang-lru"
 	"golang.org/x/time/rate"

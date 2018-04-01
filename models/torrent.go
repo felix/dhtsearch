@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/felix/dhtsearch/bencode"
 	"github.com/felix/dhtsearch/krpc"
+	"github.com/felix/go-bencode"
 )
 
 // Data for persistent storage
