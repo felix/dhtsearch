@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/felix/dhtsearch/models"
+	"src.userspace.com.au/dhtsearch/models"
 )
 
 type remoteNode struct {

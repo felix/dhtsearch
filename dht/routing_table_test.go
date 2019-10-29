@@ -5,7 +5,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/felix/dhtsearch/models"
+	"src.userspace.com.au/dhtsearch/models"
 )
 
 func TestPriorityQueue(t *testing.T) {

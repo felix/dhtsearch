@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/felix/dhtsearch/models"
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/pgtype"
+	"src.userspace.com.au/dhtsearch/models"
 )
 
 // Store is a store

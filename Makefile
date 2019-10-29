@@ -6,38 +6,34 @@ SRC = $(shell find . -type f -name '*.go')
 FLAGS = --tags fts5
 BINARIES = $(patsubst %,$(CMD)-%-v$(VERSION), $(TARGETS))
 
-.DEFAULT_GOAL := help
+.PHONY: help
+help:
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
+		|sort \
+		|awk 'BEGIN{FS=":.*?## "};{printf "\033[36m%-30s\033[0m %s\n",$$1,$$2}'
 
+.PHONY: build
 build: sqlite $(BINARIES) ## Build all binaries
 
-$(BINARIES): check-env $(SRC)
+$(BINARIES): $(SRC)
 	cd cmd && env GOOS=`echo $@ |cut -d'-' -f2` \
 		GOARCH=`echo $@ |cut -d'-' -f3 |cut -d'.' -f1` \
 		go build -o ../$@ $(FLAGS) -ldflags="-w -s -X=main.version=$(VERSION)"
 
 sqlite:
-	go get -u $(FLAGS) github.com/mattn/go-sqlite3
-	go install $(FLAGS) github.com/mattn/go-sqlite3
+	go get -u $(FLAGS) github.com/mattn/go-sqlite3 \
+		&& go install $(FLAGS) github.com/mattn/go-sqlite3
 
+.PHONY: test
 test: ## Run tests and create coverage report
-	go test -short -coverprofile=coverage.out ./...
-	go tool cover -html=coverage.out -o coverage.html
+	go test -short -coverprofile=coverage.out ./... \
+		&& go tool cover -func=coverage.out
 
+.PHONY: lint
 lint:
-	@for file in $$(find . -name 'vendor' -prune -o -type f -name '*.go'); do \
-		golint $$file; done
+	revive ./...
 
-clean: check-env ## Clean up temp files and binaries
+.PHONY: clean
+clean: ## Clean up temp files and binaries
 	rm -f $(CMD)-*-v*
 	rm -rf coverage*
-
-check-env:
-ifndef VERSION
-	$(error VERSION is undefined)
-endif
-
-help:
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) |sort \
-		|awk 'BEGIN{FS=":.*?## "};{printf "\033[36m%-30s\033[0m %s\n",$$1,$$2}'
-
-.PHONY: help install test lint clean

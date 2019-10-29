@@ -1,9 +1,9 @@
 package dht
 
 import (
-	"github.com/felix/dhtsearch/models"
-	"github.com/felix/logger"
 	"github.com/hashicorp/golang-lru"
+	"src.userspace.com.au/dhtsearch/models"
+	"src.userspace.com.au/logger"
 )
 
 type Option func(*Node) error

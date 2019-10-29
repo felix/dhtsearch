@@ -1,8 +1,8 @@
 package bt
 
 import (
-	"github.com/felix/dhtsearch/models"
-	"github.com/felix/logger"
+	"src.userspace.com.au/dhtsearch/models"
+	"src.userspace.com.au/logger"
 )
 
 type Option func(*Worker) error

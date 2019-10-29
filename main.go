@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/felix/logger"
+	"src.userspace.com.au/logger"
 )
 
 func uptime() interface{} {

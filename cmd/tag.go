@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/felix/dhtsearch/models"
+	"src.userspace.com.au/dhtsearch/models"
 )
 
 // Default tags, can be supplimented or overwritten by config

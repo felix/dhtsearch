@@ -4,7 +4,7 @@ import (
 	"container/heap"
 	"sync"
 
-	"github.com/felix/dhtsearch/models"
+	"src.userspace.com.au/dhtsearch/models"
 )
 
 type rItem struct {

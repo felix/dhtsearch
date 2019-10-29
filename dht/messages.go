@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/felix/dhtsearch/krpc"
-	"github.com/felix/dhtsearch/models"
+	"src.userspace.com.au/dhtsearch/krpc"
+	"src.userspace.com.au/dhtsearch/models"
 )
 
 func (n *Node) onPingQuery(rn remoteNode, msg map[string]interface{}) error {

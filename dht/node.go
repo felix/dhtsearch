@@ -6,12 +6,12 @@ import (
 	"net"
 	"time"
 
-	"github.com/felix/dhtsearch/krpc"
-	"github.com/felix/dhtsearch/models"
-	"github.com/felix/go-bencode"
-	"github.com/felix/logger"
 	"github.com/hashicorp/golang-lru"
 	"golang.org/x/time/rate"
+	"src.userspace.com.au/dhtsearch/krpc"
+	"src.userspace.com.au/dhtsearch/models"
+	"src.userspace.com.au/go-bencode"
+	"src.userspace.com.au/logger"
 )
 
 var (

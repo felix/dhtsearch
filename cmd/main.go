@@ -9,12 +9,12 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/felix/dhtsearch/bt"
-	"github.com/felix/dhtsearch/db"
-	"github.com/felix/dhtsearch/dht"
-	"github.com/felix/dhtsearch/models"
-	"github.com/felix/logger"
 	"github.com/hashicorp/golang-lru"
+	"src.userspace.com.au/dhtsearch/bt"
+	"src.userspace.com.au/dhtsearch/db"
+	"src.userspace.com.au/dhtsearch/dht"
+	"src.userspace.com.au/dhtsearch/models"
+	"src.userspace.com.au/logger"
 	//"github.com/pkg/profile"
 )
 

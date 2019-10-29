@@ -6,8 +6,8 @@ import (
 	"net"
 	"sync"
 
-	"github.com/felix/dhtsearch/models"
 	_ "github.com/mattn/go-sqlite3"
+	"src.userspace.com.au/dhtsearch/models"
 )
 
 // Store is a store
