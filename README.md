@@ -24,29 +24,28 @@ hosted by the remote nodes are not retrieved.
 - **Filtering** can be done by tags. By default all torrents tagged 'adult' are
   not indexed. See the SkipTags option in the configuration file.
 
-- **Full Text Search** using PostgreSQL's text search vectors. Torrent names
-  are weighted more than file names.
+- **Full Text Search** using PostgreSQL's or Sqlite's text search vectors.
+  Torrent names are weighted more than file names.
 
 - **Statistics** for the crawler process are available when the HTTP server is
   enabled. Fetch the JSON from the `/status` endpoint.
 
 - **Custom tags** can be defined in the configuration file.
 
+- **Cross-platform** builds for Windows, Macos, Linux, FreeBSD, and OpenBSD
+
 ## Installation
 
-All dependencies have been vendored using the
-[dep](https://github.com/golang/dep) tool so installation with a recent Go
-version should be as simple as:
+There is a Makefile for GNU make:
 
 ```shell
-$ go build
+$ make build
 ```
 
 ## Usage
 
-You will need to create a PostgreSQL database using the `schema.sql` file
-provided. You are going to need to sort out any port forwarding if you are
-behind NAT so remote nodes can get to yours.
+You are going to need to sort out any port forwarding if you are behind NAT so
+remote nodes can get to yours.
 
 Configuration is done via a [TOML](https://github.com/toml-lang/toml) formatted
 file or via flags passed to the daemon.

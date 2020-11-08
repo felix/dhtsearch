@@ -1,39 +1,36 @@
 
-TARGETS = freebsd-amd64 linux-386 linux-amd64 linux-arm linux-arm64 darwin-amd64 windows-386 windows-amd64
-CMD = dhtsearch
 VERSION ?= $(shell git describe --tags --always)
-SRC = $(shell find . -type f -name '*.go')
-FLAGS = --tags fts5
-BINARIES = $(patsubst %,$(CMD)-%-v$(VERSION), $(TARGETS))
-
-.PHONY: help
-help:
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
-		|sort \
-		|awk 'BEGIN{FS=":.*?## "};{printf "\033[36m%-30s\033[0m %s\n",$$1,$$2}'
+SRC	:= $(shell find . -type f -name '*.go')
+FLAGS	:= --tags fts5
+PLAT	:= windows darwin linux freebsd openbsd
+BINARY	:= $(patsubst %,dist/%,$(shell find cmd/* -maxdepth 0 -type d -exec basename {} \;))
+RELEASE	:= $(foreach os, $(PLAT), $(patsubst %,%-$(os), $(BINARY)))
 
 .PHONY: build
-build: sqlite $(BINARIES) ## Build all binaries
+build: sqlite $(BINARY)
 
-$(BINARIES): $(SRC)
-	cd cmd && env GOOS=`echo $@ |cut -d'-' -f2` \
-		GOARCH=`echo $@ |cut -d'-' -f3 |cut -d'.' -f1` \
-		go build -o ../$@ $(FLAGS) -ldflags="-w -s -X=main.version=$(VERSION)"
+.PHONY: release
+release: $(RELEASE)
+
+dist/%: export GOOS=$(word 2,$(subst -, ,$*))
+dist/%: bin=$(word 1,$(subst -, ,$*))
+dist/%: $(SRC) $(shell find cmd/$(bin) -type f -name '*.go')
+	go build -ldflags "-X main.version=$(VERSION)" $(FLAGS) \
+	     -o $@ ./cmd/$(bin)
 
 sqlite:
-	go get -u $(FLAGS) github.com/mattn/go-sqlite3 \
+	CGO_ENABLED=1 go get -u $(FLAGS) github.com/mattn/go-sqlite3 \
 		&& go install $(FLAGS) github.com/mattn/go-sqlite3
 
 .PHONY: test
-test: ## Run tests and create coverage report
+test:
 	go test -short -coverprofile=coverage.out ./... \
 		&& go tool cover -func=coverage.out
 
 .PHONY: lint
-lint:
-	revive ./...
+lint: ; go vet ./...
 
 .PHONY: clean
-clean: ## Clean up temp files and binaries
-	rm -f $(CMD)-*-v*
-	rm -rf coverage*
+clean:
+	rm -f coverage*
+	rm -rf dist

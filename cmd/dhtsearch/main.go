@@ -58,7 +58,7 @@ func main() {
 	flag.IntVar(&btNodes, "bt-nodes", 3, "number of BT nodes to start")
 	flag.StringVar(&skipTags, "skip-tags", "xxx", "tags of torrents to skip")
 
-	flag.StringVar(&dsn, "dsn", "postgres://dhtsearch@localhost/dhtsearch", "database DSN")
+	flag.StringVar(&dsn, "dsn", "file:dhtsearch.db?cache=shared&mode=memory", "database DSN")
 
 	flag.BoolVar(&showVersion, "v", false, "show version")
 

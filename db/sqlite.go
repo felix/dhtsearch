@@ -348,7 +348,8 @@ func (s *Store) prepareStatements() error {
 		join peers_torrents pt on pt.torrent_id = t.id
 		join peers p on p.id = pt.peer_id
 		where t.name is null
-		group by t.infohash`,
+		group by t.infohash
+		limit ?`,
 	); err != nil {
 		return err
 	}
