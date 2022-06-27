@@ -1,5 +1,5 @@
-//go:build ignore || postgres
-// +build ignore postgres
+//go:build ignore
+// +build ignore
 
 package store
 
