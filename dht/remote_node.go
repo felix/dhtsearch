@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"net"
 
-	"src.userspace.com.au/dhtsearch/models"
+	"src.userspace.com.au/dhtsearch"
 )
 
 type remoteNode struct {
 	addr net.Addr
-	id   models.Infohash
+	id   dhtsearch.Infohash
 }
 
 // String implements fmt.Stringer

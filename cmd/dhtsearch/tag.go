@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode"
 
-	"src.userspace.com.au/dhtsearch/models"
+	"src.userspace.com.au/dhtsearch"
 )
 
 // Default tags, can be supplimented or overwritten by config
@@ -60,7 +60,7 @@ func mergeTagRegexps(tagREs map[string]*regexp.Regexp, tags map[string]string) e
 	return nil
 }
 
-func tagTorrent(t models.Torrent, tagREs map[string]*regexp.Regexp) (tags []string) {
+func tagTorrent(t dhtsearch.Torrent, tagREs map[string]*regexp.Regexp) (tags []string) {
 	ttags := make(map[string]bool)
 
 	for tag, re := range tagREs {
@@ -80,7 +80,7 @@ func tagTorrent(t models.Torrent, tagREs map[string]*regexp.Regexp) (tags []stri
 	return tags
 }
 
-func hasTag(t models.Torrent, tag string) bool {
+func hasTag(t dhtsearch.Torrent, tag string) bool {
 	for _, t := range t.Tags {
 		if tag == t {
 			return true

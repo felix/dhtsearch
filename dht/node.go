@@ -6,10 +6,10 @@ import (
 	"net"
 	"time"
 
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 	"golang.org/x/time/rate"
+	"src.userspace.com.au/dhtsearch"
 	"src.userspace.com.au/dhtsearch/krpc"
-	"src.userspace.com.au/dhtsearch/models"
 	"src.userspace.com.au/go-bencode"
 	"src.userspace.com.au/logger"
 )
@@ -26,7 +26,7 @@ var (
 
 // Node joins the DHT network
 type Node struct {
-	id         models.Infohash
+	id         dhtsearch.Infohash
 	family     string
 	address    string
 	port       int
@@ -40,15 +40,15 @@ type Node struct {
 	blacklist  *lru.ARCCache
 
 	// OnAnnoucePeer is called for each peer that announces itself
-	OnAnnouncePeer func(models.Peer)
+	OnAnnouncePeer func(dhtsearch.Peer)
 	// OnBadPeer is called for each bad peer
-	OnBadPeer func(models.Peer)
+	OnBadPeer func(dhtsearch.Peer)
 }
 
 // NewNode creates a new DHT node
 func NewNode(opts ...Option) (*Node, error) {
 	var err error
-	id := models.GenInfohash()
+	id := dhtsearch.GenInfohash()
 
 	n := &Node{
 		id:         id,
@@ -155,7 +155,7 @@ func (n *Node) makeNeighbours() {
 				// Send to all nodes
 				nodes := n.rTable.get(0)
 				for _, rn := range nodes {
-					n.findNode(rn, models.GenerateNeighbour(n.id, rn.id))
+					n.findNode(rn, dhtsearch.GenerateNeighbour(n.id, rn.id))
 				}
 				n.rTable.flush()
 			}
@@ -194,15 +194,15 @@ func (n *Node) packetWriter() {
 			// TODO reduce limit
 			n.log.Warn("failed to write packet", "error", err)
 			if n.OnBadPeer != nil {
-				peer := models.Peer{Addr: p.raddr}
+				peer := dhtsearch.Peer{Addr: p.raddr}
 				go n.OnBadPeer(peer)
 			}
 		}
 	}
 }
 
-func (n *Node) findNode(rn *remoteNode, id models.Infohash) {
-	target := models.GenInfohash()
+func (n *Node) findNode(rn *remoteNode, id dhtsearch.Infohash) {
+	target := dhtsearch.GenInfohash()
 	n.sendQuery(rn, "find_node", map[string]interface{}{
 		"id":     string(id),
 		"target": string(target),
@@ -211,7 +211,7 @@ func (n *Node) findNode(rn *remoteNode, id models.Infohash) {
 
 // ping sends ping query to the chan.
 func (n *Node) ping(rn *remoteNode) {
-	id := models.GenerateNeighbour(n.id, rn.id)
+	id := dhtsearch.GenerateNeighbour(n.id, rn.id)
 	n.sendQuery(rn, "ping", map[string]interface{}{
 		"id": string(id),
 	})
@@ -301,7 +301,7 @@ func (n *Node) handleRequest(addr net.Addr, m map[string]interface{}) error {
 		return err
 	}
 
-	ih, err := models.InfohashFromString(id)
+	ih, err := dhtsearch.InfohashFromString(id)
 	if err != nil {
 		return err
 	}
@@ -340,7 +340,7 @@ func (n *Node) handleResponse(addr net.Addr, m map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
-	ih, err := models.InfohashFromString(id)
+	ih, err := dhtsearch.InfohashFromString(id)
 	if err != nil {
 		return err
 	}
@@ -406,10 +406,10 @@ func (n *Node) processFindNodeResults(rn remoteNode, nodeList string) {
 
 	// We got a byte array in groups of 26 or 38
 	for i := 0; i < len(nodeList); i += nodeLength {
-		id := nodeList[i : i+models.InfohashLength]
-		addrStr := krpc.DecodeCompactNodeAddr(nodeList[i+models.InfohashLength : i+nodeLength])
+		id := nodeList[i : i+dhtsearch.InfohashLength]
+		addrStr := krpc.DecodeCompactNodeAddr(nodeList[i+dhtsearch.InfohashLength : i+nodeLength])
 
-		ih, err := models.InfohashFromString(id)
+		ih, err := dhtsearch.InfohashFromString(id)
 		if err != nil {
 			n.log.Warn("invalid infohash in node list")
 			continue

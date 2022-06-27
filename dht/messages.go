@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net"
 
+	"src.userspace.com.au/dhtsearch"
 	"src.userspace.com.au/dhtsearch/krpc"
-	"src.userspace.com.au/dhtsearch/models"
 )
 
 func (n *Node) onPingQuery(rn remoteNode, msg map[string]interface{}) error {
@@ -30,14 +30,14 @@ func (n *Node) onGetPeersQuery(rn remoteNode, msg map[string]interface{}) error 
 	if err != nil {
 		return err
 	}
-	th, err := models.InfohashFromString(torrent)
+	th, err := dhtsearch.InfohashFromString(torrent)
 	if err != nil {
 		return err
 	}
 	//n.log.Debug("get_peers query", "source", rn, "torrent", th)
 
 	token := torrent[:2]
-	neighbour := models.GenerateNeighbour(n.id, *th)
+	neighbour := dhtsearch.GenerateNeighbour(n.id, *th)
 	/*
 		nodes := n.rTable.get(8)
 		compactNS := []string{}
@@ -93,7 +93,7 @@ func (n *Node) onAnnouncePeerQuery(rn remoteNode, msg map[string]interface{}) er
 	if err != nil {
 		return err
 	}
-	ih, err := models.InfohashFromString(ihStr)
+	ih, err := dhtsearch.InfohashFromString(ihStr)
 	if err != nil {
 		return fmt.Errorf("invalid torrent: %s", err)
 	}
@@ -113,7 +113,7 @@ func (n *Node) onAnnouncePeerQuery(rn remoteNode, msg map[string]interface{}) er
 
 	// TODO do we reply?
 
-	p := models.Peer{Addr: rn.addr, Infohash: *ih}
+	p := dhtsearch.Peer{Addr: rn.addr, Infohash: *ih}
 	if n.OnAnnouncePeer != nil {
 		go n.OnAnnouncePeer(p)
 	}

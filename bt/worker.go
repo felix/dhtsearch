@@ -10,8 +10,8 @@ import (
 	"net"
 	"time"
 
+	"src.userspace.com.au/dhtsearch"
 	"src.userspace.com.au/dhtsearch/krpc"
-	"src.userspace.com.au/dhtsearch/models"
 	"src.userspace.com.au/go-bencode"
 	"src.userspace.com.au/logger"
 )
@@ -44,15 +44,15 @@ var handshakePrefix = []byte{
 }
 
 type Worker struct {
-	pool         chan chan models.Peer
+	pool         chan chan dhtsearch.Peer
 	port         int
 	family       string
-	OnNewTorrent func(t models.Torrent)
-	OnBadPeer    func(p models.Peer)
+	OnNewTorrent func(t dhtsearch.Torrent)
+	OnBadPeer    func(p dhtsearch.Peer)
 	log          logger.Logger
 }
 
-func NewWorker(pool chan chan models.Peer, opts ...Option) (*Worker, error) {
+func NewWorker(pool chan chan dhtsearch.Peer, opts ...Option) (*Worker, error) {
 	var err error
 	w := &Worker{
 		pool: pool,
@@ -69,7 +69,7 @@ func NewWorker(pool chan chan models.Peer, opts ...Option) (*Worker, error) {
 }
 
 func (bt *Worker) Run() error {
-	peerCh := make(chan models.Peer)
+	peerCh := make(chan dhtsearch.Peer)
 
 	for {
 		// Signal we are ready for work
@@ -87,7 +87,7 @@ func (bt *Worker) Run() error {
 				}
 				continue
 			}
-			t, err := models.TorrentFromMetadata(p.Infohash, md)
+			t, err := dhtsearch.TorrentFromMetadata(p.Infohash, md)
 			if err != nil {
 				bt.log.Warn("failed to load torrent", "error", err)
 				continue
@@ -100,7 +100,7 @@ func (bt *Worker) Run() error {
 }
 
 // fetchMetadata fetchs medata info accroding to infohash from dht.
-func (bt *Worker) fetchMetadata(p models.Peer) (out []byte, err error) {
+func (bt *Worker) fetchMetadata(p dhtsearch.Peer) (out []byte, err error) {
 	var (
 		length       int
 		msgType      byte
@@ -131,7 +131,7 @@ func (bt *Worker) fetchMetadata(p models.Peer) (out []byte, err error) {
 	data := bytes.NewBuffer(nil)
 	data.Grow(BlockSize)
 
-	ih := models.GenInfohash()
+	ih := dhtsearch.GenInfohash()
 
 	// TCP handshake
 	//ll.Debug("sending handshake")
@@ -303,7 +303,7 @@ func sendMessage(conn net.Conn, data []byte) (int, error) {
 }
 
 // sendHandshake sends handshake message to conn.
-func sendHandshake(conn net.Conn, ih, id models.Infohash) (int, error) {
+func sendHandshake(conn net.Conn, ih, id dhtsearch.Infohash) (int, error) {
 	data := make([]byte, 68)
 	copy(data[:28], handshakePrefix)
 	copy(data[28:48], []byte(ih))

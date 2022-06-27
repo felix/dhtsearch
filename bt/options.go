@@ -1,14 +1,14 @@
 package bt
 
 import (
-	"src.userspace.com.au/dhtsearch/models"
+	"src.userspace.com.au/dhtsearch"
 	"src.userspace.com.au/logger"
 )
 
 type Option func(*Worker) error
 
 // SetOnNewTorrent sets the callback
-func SetOnNewTorrent(f func(models.Torrent)) Option {
+func SetOnNewTorrent(f func(dhtsearch.Torrent)) Option {
 	return func(w *Worker) error {
 		w.OnNewTorrent = f
 		return nil
@@ -16,7 +16,7 @@ func SetOnNewTorrent(f func(models.Torrent)) Option {
 }
 
 // SetOnBadPeer sets the callback
-func SetOnBadPeer(f func(models.Peer)) Option {
+func SetOnBadPeer(f func(dhtsearch.Peer)) Option {
 	return func(w *Worker) error {
 		w.OnBadPeer = f
 		return nil

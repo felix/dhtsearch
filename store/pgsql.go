@@ -1,6 +1,7 @@
+//go:build ignore || postgres
 // +build ignore postgres
 
-package db
+package store
 
 import (
 	"fmt"

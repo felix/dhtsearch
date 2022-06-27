@@ -1,12 +1,12 @@
-package models
+package dhtsearch
 
 import (
+	"bytes"
 	"encoding/hex"
 	"testing"
 )
 
 func TestInfohashImport(t *testing.T) {
-
 	tests := []struct {
 		str string
 		ok  bool
@@ -33,11 +33,8 @@ func TestInfohashImport(t *testing.T) {
 			if ih.String() != tt.str {
 				t.Errorf("expected ih.String() to equal %s, got %s", tt.str, ih.String())
 			}
-			byt := ih.Bytes()
-			for i := range byt {
-				if byt[i] != []byte(tt.str)[i] {
-					t.Errorf("expected ih.Bytes() to equal %s, got %s", []byte(tt.str), ih.Bytes())
-				}
+			if !bytes.Equal(ih.Bytes(), idBytes) {
+				t.Errorf("expected ih.Bytes() to equal %x, got %x", []byte(tt.str), ih.Bytes())
 			}
 		} else {
 			if err == nil {

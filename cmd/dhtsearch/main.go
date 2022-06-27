@@ -9,11 +9,11 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
+	"src.userspace.com.au/dhtsearch"
 	"src.userspace.com.au/dhtsearch/bt"
-	"src.userspace.com.au/dhtsearch/db"
 	"src.userspace.com.au/dhtsearch/dht"
-	"src.userspace.com.au/dhtsearch/models"
+	"src.userspace.com.au/dhtsearch/store"
 	"src.userspace.com.au/logger"
 	//"github.com/pkg/profile"
 )
@@ -34,8 +34,8 @@ var (
 
 // Torrent vars
 var (
-	pool     chan chan models.Peer
-	torrents chan models.Torrent
+	pool     chan chan dhtsearch.Peer
+	torrents chan dhtsearch.Torrent
 	btNodes  int
 	tagREs   map[string]*regexp.Regexp
 	skipTags string
@@ -81,7 +81,7 @@ func main() {
 	log.Info("version", version)
 	log.Debug("debugging")
 
-	store, err := db.NewStore(dsn)
+	store, err := store.New(dsn)
 	if err != nil {
 		log.Error("failed to connect store", "error", err)
 		os.Exit(1)
@@ -117,7 +117,7 @@ func main() {
 	}
 }
 
-func startDHTNodes(s models.PeerStore) {
+func startDHTNodes(s store.PeerStore) {
 	log.Debug("starting dht nodes")
 	nodes := make([]*dht.Node, dhtNodes)
 
@@ -127,7 +127,7 @@ func startDHTNodes(s models.PeerStore) {
 			dht.SetPort(port+i),
 			dht.SetIPv6(ipv6),
 			dht.SetBlacklist(peerBlacklist),
-			dht.SetOnAnnouncePeer(func(p models.Peer) {
+			dht.SetOnAnnouncePeer(func(p dhtsearch.Peer) {
 				if _, black := ihBlacklist.Get(p.Infohash.String()); black {
 					log.Debug("ignoring blacklisted infohash", "peer", p)
 					return
@@ -138,7 +138,7 @@ func startDHTNodes(s models.PeerStore) {
 					log.Error("failed to save peer", "error", err)
 				}
 			}),
-			dht.SetOnBadPeer(func(p models.Peer) {
+			dht.SetOnBadPeer(func(p dhtsearch.Peer) {
 				err := s.RemovePeer(&p)
 				if err != nil {
 					log.Error("failed to remove peer", "error", err)
@@ -154,7 +154,7 @@ func startDHTNodes(s models.PeerStore) {
 	}
 }
 
-func processPendingPeers(s models.InfohashStore) {
+func processPendingPeers(s store.InfohashStore) {
 	log.Debug("processing pending peers")
 	for {
 		peers, err := s.PendingInfohashes(10)
@@ -174,12 +174,12 @@ func processPendingPeers(s models.InfohashStore) {
 	}
 }
 
-func startBTWorkers(s models.TorrentStore) {
+func startBTWorkers(s store.TorrentStore) {
 	log.Debug("starting bittorrent workers")
-	pool = make(chan chan models.Peer)
-	torrents = make(chan models.Torrent)
+	pool = make(chan chan dhtsearch.Peer)
+	torrents = make(chan dhtsearch.Torrent)
 
-	onNewTorrent := func(t models.Torrent) {
+	onNewTorrent := func(t dhtsearch.Torrent) {
 		// Add tags
 		tags := tagTorrent(t, tagREs)
 		for _, skipTag := range strings.Split(skipTags, ",") {
@@ -203,7 +203,7 @@ func startBTWorkers(s models.TorrentStore) {
 		log.Info("torrent added", "name", t.Name, "size", t.Size, "tags", t.Tags)
 	}
 
-	onBadPeer := func(p models.Peer) {
+	onBadPeer := func(p dhtsearch.Peer) {
 		log.Debug("removing peer", "peer", p)
 		err := s.RemovePeer(&p)
 		if err != nil {

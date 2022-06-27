@@ -1,21 +1,21 @@
 package dht
 
 import (
-	"github.com/hashicorp/golang-lru"
-	"src.userspace.com.au/dhtsearch/models"
+	lru "github.com/hashicorp/golang-lru"
+	"src.userspace.com.au/dhtsearch"
 	"src.userspace.com.au/logger"
 )
 
 type Option func(*Node) error
 
-func SetOnAnnouncePeer(f func(models.Peer)) Option {
+func SetOnAnnouncePeer(f func(dhtsearch.Peer)) Option {
 	return func(n *Node) error {
 		n.OnAnnouncePeer = f
 		return nil
 	}
 }
 
-func SetOnBadPeer(f func(models.Peer)) Option {
+func SetOnBadPeer(f func(dhtsearch.Peer)) Option {
 	return func(n *Node) error {
 		n.OnBadPeer = f
 		return nil

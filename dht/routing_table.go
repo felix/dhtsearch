@@ -4,7 +4,7 @@ import (
 	"container/heap"
 	"sync"
 
-	"src.userspace.com.au/dhtsearch/models"
+	"src.userspace.com.au/dhtsearch"
 )
 
 type rItem struct {
@@ -16,14 +16,14 @@ type rItem struct {
 type priorityQueue []*rItem
 
 type routingTable struct {
-	id        models.Infohash
+	id        dhtsearch.Infohash
 	max       int
 	items     priorityQueue
 	addresses map[string]*remoteNode
 	sync.Mutex
 }
 
-func newRoutingTable(id models.Infohash, max int) (*routingTable, error) {
+func newRoutingTable(id dhtsearch.Infohash, max int) (*routingTable, error) {
 	k := &routingTable{
 		id:  id,
 		max: max,

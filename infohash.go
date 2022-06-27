@@ -1,4 +1,4 @@
-package models
+package dhtsearch
 
 import (
 	"crypto/sha1"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"strconv"
 	"time"
 )
 
@@ -91,6 +92,6 @@ func GenInfohash() (ih Infohash) {
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 	hash := sha1.New()
 	io.WriteString(hash, time.Now().String())
-	io.WriteString(hash, string(random.Int()))
+	io.WriteString(hash, strconv.Itoa(random.Int()))
 	return Infohash(hash.Sum(nil))
 }

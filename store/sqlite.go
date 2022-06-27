@@ -1,4 +1,4 @@
-package db
+package store
 
 import (
 	"database/sql"
@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	_ "github.com/mattn/go-sqlite3"
-	"src.userspace.com.au/dhtsearch/models"
+	"src.userspace.com.au/dhtsearch"
 )
 
 // Store is a store
@@ -17,8 +17,8 @@ type Store struct {
 	lock  sync.RWMutex
 }
 
-// NewStore connects and initializes a new store
-func NewStore(dsn string) (*Store, error) {
+// New connects and initializes a new store
+func New(dsn string) (*Store, error) {
 	conn, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open store: %s", err)
@@ -44,7 +44,7 @@ func (s *Store) Close() error {
 }
 
 // PendingInfohashes gets the next pending infohash from the store
-func (s *Store) PendingInfohashes(n int) (peers []*models.Peer, err error) {
+func (s *Store) PendingInfohashes(n int) (peers []*dhtsearch.Peer, err error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -54,8 +54,8 @@ func (s *Store) PendingInfohashes(n int) (peers []*models.Peer, err error) {
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var p models.Peer
-		var ih models.Infohash
+		var p dhtsearch.Peer
+		var ih dhtsearch.Infohash
 		var addr string
 		err = rows.Scan(&addr, &ih)
 		if err != nil {
@@ -73,7 +73,7 @@ func (s *Store) PendingInfohashes(n int) (peers []*models.Peer, err error) {
 }
 
 // SaveTorrent implements torrentStore
-func (s *Store) SaveTorrent(t *models.Torrent) error {
+func (s *Store) SaveTorrent(t *dhtsearch.Torrent) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -122,7 +122,7 @@ func (s *Store) SaveTorrent(t *models.Torrent) error {
 	return tx.Commit()
 }
 
-func (s *Store) RemoveTorrent(t *models.Torrent) (err error) {
+func (s *Store) RemoveTorrent(t *dhtsearch.Torrent) (err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -131,7 +131,7 @@ func (s *Store) RemoveTorrent(t *models.Torrent) (err error) {
 }
 
 // SavePeer implements torrentStore
-func (s *Store) SavePeer(p *models.Peer) (err error) {
+func (s *Store) SavePeer(p *dhtsearch.Peer) (err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -165,7 +165,7 @@ func (s *Store) SavePeer(p *models.Peer) (err error) {
 	return tx.Commit()
 }
 
-func (s *Store) RemovePeer(p *models.Peer) (err error) {
+func (s *Store) RemovePeer(p *dhtsearch.Peer) (err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -174,7 +174,7 @@ func (s *Store) RemovePeer(p *models.Peer) (err error) {
 }
 
 // TorrentsByHash implements torrentStore
-func (s *Store) TorrentByHash(ih models.Infohash) (*models.Torrent, error) {
+func (s *Store) TorrentByHash(ih dhtsearch.Infohash) (*dhtsearch.Torrent, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -191,7 +191,7 @@ func (s *Store) TorrentByHash(ih models.Infohash) (*models.Torrent, error) {
 }
 
 // TorrentsByName implements torrentStore
-func (s *Store) TorrentsByName(query string, offset int) ([]*models.Torrent, error) {
+func (s *Store) TorrentsByName(query string, offset int) ([]*dhtsearch.Torrent, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -208,7 +208,7 @@ func (s *Store) TorrentsByName(query string, offset int) ([]*models.Torrent, err
 }
 
 // TorrentsByTag implements torrentStore
-func (s *Store) TorrentsByTag(tag string, offset int) ([]*models.Torrent, error) {
+func (s *Store) TorrentsByTag(tag string, offset int) ([]*dhtsearch.Torrent, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -240,12 +240,12 @@ func (s *Store) SaveTag(tag string) (int, error) {
 	return int(tagID), nil
 }
 
-func (s *Store) fetchTorrents(rows *sql.Rows) (torrents []*models.Torrent, err error) {
+func (s *Store) fetchTorrents(rows *sql.Rows) (torrents []*dhtsearch.Torrent, err error) {
 	for rows.Next() {
-		var t models.Torrent
+		var t dhtsearch.Torrent
 		/*
-			t := &models.Torrent{
-				Files: []models.File{},
+			t := &dhtsearch.Torrent{
+				Files: []dhtsearch.File{},
 				Tags:  []string{},
 			}
 		*/
@@ -263,7 +263,7 @@ func (s *Store) fetchTorrents(rows *sql.Rows) (torrents []*models.Torrent, err e
 				return fmt.Errorf("failed to select files: %s", err)
 			}
 			for rowsf.Next() {
-				var f models.File
+				var f dhtsearch.File
 				err = rowsf.Scan(&f.ID, &f.TorrentID, &f.Path, &f.Size)
 				if err != nil {
 					return fmt.Errorf("failed to build file: %s", err)

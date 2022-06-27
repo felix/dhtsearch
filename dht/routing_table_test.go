@@ -5,7 +5,7 @@ import (
 	"net"
 	"testing"
 
-	"src.userspace.com.au/dhtsearch/models"
+	"src.userspace.com.au/dhtsearch"
 )
 
 func TestPriorityQueue(t *testing.T) {
@@ -18,7 +18,7 @@ func TestPriorityQueue(t *testing.T) {
 		"d1c5676ae7ac98e8b19f63565905105e3c4c37a3", // distance of 159
 	}
 
-	ih, err := models.InfohashFromString(id)
+	ih, err := dhtsearch.InfohashFromString(id)
 	if err != nil {
 		t.Errorf("failed to create infohash: %s\n", err)
 	}
@@ -29,7 +29,7 @@ func TestPriorityQueue(t *testing.T) {
 	}
 
 	for i, idt := range tests {
-		iht, err := models.InfohashFromString(idt)
+		iht, err := dhtsearch.InfohashFromString(idt)
 		if err != nil {
 			t.Errorf("failed to create infohash: %s\n", err)
 		}
